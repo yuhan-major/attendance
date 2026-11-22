@@ -32,13 +32,24 @@
     .lbl { display: block; font-size: .72rem; font-weight: 600; color: #475569; margin-bottom: .25rem; }
     .spinner { width: 18px; height: 18px; border: 3px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .mascot-bob { animation: bob 1.1s ease-in-out infinite; transform-origin: 50% 80%; }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-4px) rotate(5deg); } }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
 
-  <!-- 로딩 표시 -->
-  <div id="loading" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[60] bg-white border border-indigo-200 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 text-xs font-semibold text-indigo-700">
-    <div class="spinner"></div> 처리 중...
+  <!-- 사이트 안에서 저장·처리할 때 보여주는 로딩 (배움꿈나무 마스코트) -->
+  <div id="loading" class="hidden fixed inset-0 z-[60] bg-slate-900/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl px-8 py-6 flex flex-col items-center gap-1.5 min-w-[260px] max-w-xs text-center">
+      <div class="relative w-24 h-24 mb-2">
+        <div class="absolute inset-0 rounded-full border-4 border-emerald-100 border-t-emerald-500 animate-spin"></div>
+        <div class="absolute inset-2.5 mascot-bob">
+          <svg viewBox="0 0 64 64" aria-label="배움꿈나무" role="img" class="w-full h-full rounded-full"><rect width="64" height="64" rx="32" fill="#E7F5E2"/><path d="M32 10 Q30 6 33 4" stroke="#5B3A1E" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M16 24 Q16 12 32 12 Q48 12 48 24 Q48 29 32 29 Q16 29 16 24Z" fill="#8B5E3C"/><path d="M18 18 Q32 24 46 18" stroke="#6B4226" stroke-width="1.4" fill="none" opacity="0.55"/><path d="M19 22 Q32 27.5 45 22" stroke="#6B4226" stroke-width="1.4" fill="none" opacity="0.55"/><path d="M18 26 Q16 44 32 54 Q48 44 46 26 Q32 32 18 26Z" fill="#D9A066"/><circle cx="27" cy="38" r="2" fill="#4A2E10"/><circle cx="37" cy="38" r="2" fill="#4A2E10"/><path d="M27 44 Q32 48 37 44" stroke="#4A2E10" stroke-width="2" stroke-linecap="round" fill="none"/><ellipse cx="22" cy="41" rx="2.4" ry="1.5" fill="#E8956B" opacity="0.5"/><ellipse cx="42" cy="41" rx="2.4" ry="1.5" fill="#E8956B" opacity="0.5"/><rect x="39" y="45" width="22" height="16" rx="2.5" fill="#FDF6E9"/><path d="M43 50 Q49 47.5 55 50" stroke="#5DB56D" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M43 54.5 Q48 53 53 54.5" stroke="#5DB56D" stroke-width="1.6" fill="none" stroke-linecap="round"/><line x1="44" y1="34" x2="54" y2="46" stroke="#F5B942" stroke-width="4" stroke-linecap="round"/><circle cx="43" cy="33" r="2.2" fill="#E86B5C"/><circle cx="55" cy="47" r="1.4" fill="#3A2A1A"/></svg>
+        </div>
+      </div>
+      <p id="loadingMsg" class="text-sm font-bold text-slate-800">처리하는 중...</p>
+      <p id="loadingTip" class="text-xs text-slate-400 min-h-[1rem]">배움꿈나무가 열심히 적고 있어요 ✏️</p>
+    </div>
   </div>
 
   <!-- 처음 열 때 / 로그인할 때 보여주는 큰 로딩 화면 (유일한 박사님) -->
@@ -157,13 +168,13 @@
       </div>
       <nav class="bg-slate-800 border-t border-slate-700/60 text-slate-300 overflow-x-auto custom-scrollbar">
         <div class="max-w-7xl mx-auto px-4 flex space-x-1 font-medium text-xs sm:text-sm whitespace-nowrap">
-          <button onclick="setActiveTab('attendance')" id="tab-attendance" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="qr-code" class="w-4 h-4"></i> 출결 & 전체공지</button>
-          <button onclick="setActiveTab('students')" id="tab-students" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> <span id="tabStudentsLabel">학생 명단</span></button>
-          <button onclick="setActiveTab('tasks')" id="tab-tasks" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="check-square" class="w-4 h-4"></i> 과제 ('다했니')</button>
-          <button onclick="setActiveTab('roadmap')" id="tab-roadmap" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="target" class="w-4 h-4"></i> 취업 로드맵</button>
-          <button onclick="setActiveTab('notices')" id="tab-notices" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="bell" class="w-4 h-4"></i> 학과 공지 & 메모</button>
-          <button onclick="setActiveTab('academic')" id="tab-academic" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="calendar" class="w-4 h-4"></i> 학사일정 & NCS</button>
-          <button onclick="setActiveTab('jobs')" id="tab-jobs" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="briefcase" class="w-4 h-4"></i> 채용 공고</button>
+          <button onclick="setActiveTab('attendance')" id="tab-attendance" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="qr-code" class="w-4 h-4"></i> 출결 & 전체공지</button>
+          <button onclick="setActiveTab('students')" id="tab-students" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> <span id="tabStudentsLabel">학생 명단</span></button>
+          <button onclick="setActiveTab('tasks')" id="tab-tasks" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="check-square" class="w-4 h-4"></i> 과제 ('다했니')</button>
+          <button onclick="setActiveTab('roadmap')" id="tab-roadmap" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="target" class="w-4 h-4"></i> 취업 로드맵</button>
+          <button onclick="setActiveTab('notices')" id="tab-notices" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="bell" class="w-4 h-4"></i> 학과 공지 & 메모</button>
+          <button onclick="setActiveTab('academic')" id="tab-academic" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="calendar" class="w-4 h-4"></i> 학사일정 & NCS</button>
+          <button onclick="setActiveTab('jobs')" id="tab-jobs" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="briefcase" class="w-4 h-4"></i> 채용 공고</button>
           <button onclick="setActiveTab('admin')" id="tab-admin" data-roles="admin" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="shield" class="w-4 h-4"></i> 관리자 설정</button>
         </div>
       </nav>
@@ -254,7 +265,7 @@
 
         <!-- 교사 -->
         <div id="teacherAttView" class="space-y-6">
-          <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 editor-only">
             <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
               <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-3"><i data-lucide="clock" class="w-4 h-4 text-indigo-600"></i> 1. 0교시 / 방과후 시간 규칙 <span class="text-[11px] font-normal text-slate-400">(전교 공통)</span></h3>
               <div class="space-y-2">
@@ -301,7 +312,7 @@
             </div>
           </div>
 
-          <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4">
+          <div class="editor-only bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4">
             <div>
               <div class="flex flex-wrap items-center gap-2"><span class="bg-indigo-500 text-white text-xs px-2.5 py-0.5 rounded-full font-bold">고정 부착용</span><h3 class="font-bold text-lg">3. 교실/교무실 부착용 QR 인쇄</h3></div>
               <p class="text-xs text-indigo-200 mt-1">학과별로 한 번 인쇄해 붙여두면 계속 사용합니다. 0교시·방과후 공용(시간에 따라 자동 구분).</p>
@@ -345,7 +356,7 @@
                 <p class="text-xs text-slate-500">셀을 클릭해 바로 수정(자동 저장). 연락처는 마우스를 올리면 보입니다.</p>
               </div>
               <div class="flex items-center gap-2">
-                <button onclick="openTeacherAddStudent()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</button>
+                <button onclick="openTeacherAddStudent()" class="editor-only bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</button>
                 <button onclick="exportStudentCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 명단 CSV</button>
               </div>
             </div>
@@ -485,6 +496,7 @@
                   <thead><tr class="text-left text-slate-500 border-b border-slate-200"><th class="py-1.5">구분</th><th>볼 수 있는 것</th><th>할 수 있는 것</th></tr></thead>
                   <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold text-rose-600 whitespace-nowrap pr-2">전체 관리자</td><td class="pr-2">모든 학과</td><td>모든 수정, 교사 계정 관리, 전체 공지, 학교 좌표, 테스트 모드</td></tr>
                   <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold text-indigo-600 whitespace-nowrap pr-2">학과부장·교사</td><td class="pr-2">자기 학과 학생만</td><td>학생 추가·수정·삭제, 가입 승인, 출결 수정, 통계, 학과 공지, 과제</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold text-amber-600 whitespace-nowrap pr-2">전체 조회<br><span class="font-normal text-[11px]">진로진학부·상담<br>교감 등</span></td><td class="pr-2">모든 학과 (보기만)</td><td>학생 명단·출결 통계·실시간 현황·로드맵 보기, 채용 공고·학사일정 등록, 개인 메모. <b>수정·삭제·승인은 불가</b></td></tr>
                   <tr class="align-top"><td class="py-1.5 font-semibold text-emerald-600 whitespace-nowrap pr-2">학생</td><td class="pr-2">본인 정보만</td><td>출석, 내 연락처·목표기업·자격증 수정, 비밀번호·PIN 변경</td></tr>
                 </table>
                 <p class="mt-2 text-slate-500">학과 공지는 그 학과와 관리자만 보고, 전체 공지는 모두가 봅니다.</p>
@@ -494,7 +506,14 @@
             <details class="border border-slate-200 rounded-xl">
               <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🧑‍🏫 교사 계정 추가 · 관리자 권한 넘기기</summary>
               <div class="px-4 pb-4 space-y-2">
-                <p><b>교사 추가</b>: 아래 [교사 계정 관리 → + 교사 추가] → 이름, 구글 이메일, 학과, 직책(학과부장/교사), 초기 비밀번호(8자 이상) 입력</p>
+                <p><b>교사 추가</b>: 아래 [교사 계정 관리 → + 교사 추가] → 이름, 구글 이메일, <b>권한</b>, 학과·직책, 초기 비밀번호(8자 이상) 입력</p>
+                <table class="w-full my-1">
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">학과부장·담당 교사</td><td>권한 <b>학과 교사</b> → 학과 선택 → 직책 학과부장/교사</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">진로진학부·상담 교사</td><td>권한 <b>전체 조회</b> → 직책 진로진학부 교사 / 상담 교사</td></tr>
+                  <tr class="align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">교감·교장</td><td>권한 <b>전체 조회</b> → 직책 교감 / 교장 (수정까지 필요하면 <b>전체 관리자</b>)</td></tr>
+                </table>
+                <p><b>직책이 목록에 없을 때</b>: 계정 추가 화면의 직책 칸에서 <b>[＋ 새 직책 추가…]</b>를 고르거나, 교사 계정 목록 아래 <b>📋 직책 목록 → [+ 직책 추가]</b>를 누릅니다. 목록에서 뺀 직책도 이미 만든 계정은 그대로입니다.</p>
+                <p><b>권한·직책 바꾸기</b>: 그 선생님 줄의 [권한·직책 변경]</p>
                 <p class="bg-amber-50 border border-amber-200 rounded-lg p-2">💡 초기 비밀번호를 <b>admin1234</b>로 만들면, 그 선생님이 처음 로그인할 때 비밀번호 변경 창이 자동으로 뜹니다.</p>
                 <p><b>추가한 뒤 선생님께 알려드릴 것</b>: 사이트 주소, 로그인 이메일, 초기 비밀번호</p>
                 <p><b>비밀번호를 잊으셨을 때</b>: 그 선생님 줄의 [비번 초기화]</p>
@@ -753,10 +772,43 @@
     // ===================================================================
     // API
     // ===================================================================
-    let loadingCount = 0;
-    function setLoading(on) { loadingCount += on ? 1 : -1; $('loading').classList.toggle('hidden', loadingCount <= 0); }
+    // 작업별 로딩 문구
+    const ACTION_MSG = {
+      bootstrap: '최신 정보로 새로고침하는 중...', today: '실시간 현황을 불러오는 중...',
+      scan: '출석을 확인하는 중...', studentScan: '출석을 확인하는 중...', signup: '가입 신청을 보내는 중...',
+      addUser: '선생님 계정을 만드는 중...', deleteUser: '계정을 삭제하는 중...', setUserRole: '권한을 바꾸는 중...', resetUserPw: '비밀번호를 바꾸는 중...',
+      savePositions: '직책 목록을 저장하는 중...',
+      addStudent: '학생을 등록하는 중...', updateStudent: '학생 정보를 저장하는 중...', changeStudentId: '학번을 바꾸고 출결 기록을 옮기는 중...',
+      deleteStudent: '학생과 출결 기록을 삭제하는 중...', approveStudent: '가입 신청을 처리하는 중...', resetStudentCred: 'PIN·비밀번호를 바꾸는 중...',
+      updateMyInfo: '내 정보를 저장하는 중...', changeMyCred: '비밀번호·PIN을 바꾸는 중...', changeMyPw: '비밀번호를 바꾸는 중...',
+      saveTimeConfig: '시간 규칙을 저장하는 중...', setDates: '운영일을 저장하는 중...', editAttendance: '출결 기록을 저장하는 중...',
+      addGlobalNotice: '전체 공지를 등록하는 중...', deleteGlobalNotice: '공지를 삭제하는 중...', addDeptNotice: '학과 공지를 등록하는 중...', deleteDeptNotice: '공지를 삭제하는 중...',
+      addMemo: '메모를 저장하는 중...', deleteMemo: '메모를 삭제하는 중...', addTask: '과제를 출제하는 중...', deleteTask: '과제를 삭제하는 중...', toggleTask: '과제 제출을 기록하는 중...',
+      addEvent: '학사일정을 등록하는 중...', deleteEvent: '일정을 삭제하는 중...', addJob: '채용 공고를 등록하는 중...', deleteJob: '공고를 삭제하는 중...',
+      saveLocation: '학교 좌표를 저장하는 중...', saveSiteUrl: '사이트 주소를 저장하는 중...', setTestMode: '테스트 모드를 바꾸는 중...'
+    };
+    const LOADING_TIPS = ['배움꿈나무가 열심히 적고 있어요 ✏️', '구글 시트에 꼼꼼히 기록하는 중 📒', '조금만 기다려 주세요 🌱', '거의 다 됐어요! 🌳'];
+    let loadingCount = 0, loadingHideTimer = null, tipTimer = null;
+    function setLoading(on, msg) {
+      if (on) {
+        loadingCount++; clearTimeout(loadingHideTimer);
+        if (msg) $('loadingMsg').innerText = msg;
+        if ($('loading').classList.contains('hidden')) {
+          $('loading').classList.remove('hidden');
+          let i = 0, started = Date.now(); $('loadingTip').innerText = LOADING_TIPS[0];
+          clearInterval(tipTimer);
+          tipTimer = setInterval(() => {
+            $('loadingTip').innerText = Date.now() - started > 8000 ? '평소보다 오래 걸리고 있어요. 잠시만요! ⏳' : LOADING_TIPS[++i % LOADING_TIPS.length];
+          }, 1600);
+        }
+      } else {
+        loadingCount = Math.max(0, loadingCount - 1);
+        // 저장 → 새로고침처럼 요청이 이어질 때 깜빡이지 않도록 잠깐 기다렸다 닫음
+        if (loadingCount === 0) loadingHideTimer = setTimeout(() => { if (loadingCount === 0) { $('loading').classList.add('hidden'); clearInterval(tipTimer); } }, 250);
+      }
+    }
     async function api(action, data = {}, opts = {}) {
-      if (!opts.silent) setLoading(true);
+      if (!opts.silent) setLoading(true, opts.msg || ACTION_MSG[action] || '처리하는 중...');
       try {
         for (let i = 0; ; i++) {
           let j;
@@ -785,6 +837,8 @@
       state.zeroCfg = c.zeroCfg; state.afterCfg = c.afterCfg; state.activeDates = c.activeDates; state.lockedDates = c.lockedDates;
       state.schoolLocation = c.schoolLocation; state.testMode = !!c.testMode;
       if (c.siteUrl !== undefined) state.siteUrl = c.siteUrl;
+      // 서버(Code.gs)가 새 버전이면 positions가 같이 옴 → 전체 조회 권한 사용 가능
+      if (c.positions) { state.positions = c.positions; state.serverHasViewer = true; }
       $('demoPanel').classList.toggle('hidden', !state.testMode);
     }
     // 큰 로딩 화면: 너무 빨리 사라지면 깜빡이는 것처럼 보여서 최소 0.7초는 보여줌
@@ -814,8 +868,10 @@
     // ===================================================================
     const me = () => state.me;
     const role = () => state.role;
-    const isStaff = () => role() === 'admin' || role() === 'teacher';
-    function scopeDept() { return role() === 'admin' ? (state.adminDept === 'ALL' ? null : state.adminDept) : me().dept; }
+    const isStaff = () => ['admin', 'teacher', 'viewer'].includes(role());   // 교사용 화면을 보는 사람
+    const isEditor = () => role() === 'admin' || role() === 'teacher';      // 수정할 수 있는 사람
+    const viewAll = () => role() === 'admin' || role() === 'viewer';        // 모든 학과를 보는 사람
+    function scopeDept() { return viewAll() ? (state.adminDept === 'ALL' ? null : state.adminDept) : me().dept; }
     function visibleStudents(includePending = false) {
       if (role() === 'student') return [me()];
       const d = scopeDept();
@@ -904,6 +960,10 @@
       renderGpsBadge();
       return p;
     }
+    async function measureWithLoading() {
+      setLoading(true, '📍 위치(GPS)를 확인하는 중...');
+      try { return await measureDistance(); } finally { setLoading(false); }
+    }
     function scanPayload(p) {
       const d = {};
       if (p.lat != null) { d.lat = p.lat; d.lng = p.lng; d.acc = p.acc; }
@@ -987,7 +1047,7 @@
       const show = (ok, msg) => { $('qkForm').classList.add('hidden'); $('qkResult').classList.remove('hidden'); $('qkResultIcon').innerText = ok ? '✅' : '⛔'; $('qkResultMsg').innerText = msg; };
       $('qkSubmit').disabled = true;
       try {
-        const p = await measureDistance();
+        const p = await measureWithLoading();
         if (p.error) return show(false, '📍 ' + p.error);
         const r = await api('scan', Object.assign({ sid, pin, type: qrParams.type, session: $('qkSession').value, qrDept: qrParams.dept, reason }, scanPayload(p)));
         show(r.ok, r.msg);
@@ -1058,12 +1118,13 @@
     function renderApp() {
       if (!state.me) return;
       const r = role(), u = me();
-      $('adminDeptBox').classList.toggle('hidden', r !== 'admin');
-      if (r === 'admin') { $('adminDeptSelect').innerHTML = `<option value="ALL">전체 학과</option>` + DEPT_NAMES.map(d => `<option>${d}</option>`).join(''); $('adminDeptSelect').value = state.adminDept; }
-      const badge = r === 'admin' ? ['bg-rose-500', '전체 관리자'] : r === 'teacher' ? ['bg-indigo-500', `${u.dept} ${u.position}`] : ['bg-emerald-500', `${u.dept} 학생`];
+      $('adminDeptBox').classList.toggle('hidden', !viewAll());
+      if (viewAll()) { $('adminDeptSelect').innerHTML = `<option value="ALL">전체 학과</option>` + DEPT_NAMES.map(d => `<option>${d}</option>`).join(''); $('adminDeptSelect').value = state.adminDept; }
+      const badge = r === 'admin' ? ['bg-rose-500', '전체 관리자'] : r === 'viewer' ? ['bg-amber-500', u.position] : r === 'teacher' ? ['bg-indigo-500', `${u.dept} ${u.position}`] : ['bg-emerald-500', `${u.dept} 학생`];
       $('userChip').innerHTML = `<span class="${badge[0]} text-white px-2 py-0.5 rounded font-bold text-[11px]">${esc(badge[1])}</span><span class="font-semibold">${esc(u.name)}</span>`;
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('hidden', !b.dataset.roles.split(',').includes(r)));
       $('tabStudentsLabel').innerText = r === 'student' ? '내 정보' : '학생 명단 (엑셀 그리드)';
+      document.querySelectorAll('.editor-only').forEach(el => el.classList.toggle('hidden', !isEditor()));
       if ($('tab-' + state.activeTab).classList.contains('hidden')) state.activeTab = 'attendance';
       setActiveTab(state.activeTab, true);
       renderNoticeStrip(); renderGlobalNotices(); renderGpsBadge(); renderAttendance(); renderStudentsTab();
@@ -1078,7 +1139,7 @@
       $(`sec-${tabId}`).classList.remove('hidden');
       if (!silent) window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    function goHome() { closeModal(); hideModal('printableQrModal'); state.stripHidden = false; if (role() === 'admin') state.adminDept = 'ALL'; state.activeTab = 'attendance'; renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function goHome() { closeModal(); hideModal('printableQrModal'); state.stripHidden = false; if (viewAll()) state.adminDept = 'ALL'; state.activeTab = 'attendance'; renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     // ---- 공지 ----
     const byNewest = (a, b) => String(b.date).localeCompare(String(a.date)) || Number(b.id) - Number(a.id);
@@ -1112,7 +1173,7 @@
     }
     function renderDeptNotices() {
       const d = scopeDept(); $('deptNoticeScope').innerText = d ? `(${d})` : '(전체 학과)';
-      $('btnAddDeptNotice').classList.toggle('hidden', !isStaff());
+      $('btnAddDeptNotice').classList.toggle('hidden', !isEditor());
       const list = visibleDeptNotices();
       $('deptNoticeList').innerHTML = list.length ? list.map(n => noticeCard(n, canManage(n), 'deleteDeptNotice', 'emerald')).join('') : '<p class="text-xs text-slate-400">등록된 학과 공지가 없습니다.</p>';
       $('memoCard').classList.toggle('hidden', !isStaff());
@@ -1284,7 +1345,7 @@
       const ss = guessSession();
       const sel = `<div><label class="lbl">운영 구분</label><select id="scSession" class="inp"><option value="zero" ${ss === 'zero' ? 'selected' : ''}>0교시</option><option value="after" ${ss === 'after' ? 'selected' : ''}>방과후</option></select></div>`;
       const run = async reason => {
-        const p = await measureDistance();
+        const p = await measureWithLoading();
         if (p.error) return modalErr('📍 ' + p.error);
         const r = await api('studentScan', Object.assign({ type, session: $('scSession').value, qrDept: codeOf(me().dept), reason }, scanPayload(p)));
         if (!r.ok) return modalErr(r.msg);
@@ -1330,7 +1391,7 @@
       if (staff) { renderPending(); renderStudentGrid(); } else renderMyInfo();
     }
     function renderPending() {
-      const list = visibleStudents(true).filter(s => s.status === 'pending');
+      const list = isEditor() ? visibleStudents(true).filter(s => s.status === 'pending' && canManage(s)) : [];
       $('pendingBox').classList.toggle('hidden', !list.length);
       $('pendingList').innerHTML = list.map(s => `<div class="flex flex-wrap items-center justify-between gap-2 bg-white border border-amber-200 rounded-xl p-3 text-xs">
         <div><b>${esc(s.name)}</b> <span class="font-mono text-slate-500">${esc(s.id)}</span> · ${esc(s.dept)} ${s.grade}학년 · ${esc(s.email)} <span class="text-slate-400">(${esc(s.createdAt)} 신청)</span></div>
@@ -1425,7 +1486,7 @@
     // ===================================================================
     function renderTasks() {
       const box = $('taskListContainer'), d = scopeDept(), r = role();
-      $('btnNewTask').classList.toggle('hidden', !isStaff());
+      $('btnNewTask').classList.toggle('hidden', !isEditor());
       const tasks = state.tasks.filter(t => !d || t.dept === d).sort((a, b) => a.date.localeCompare(b.date));
       if (!tasks.length) { box.innerHTML = '<p class="text-xs text-slate-400">등록된 과제가 없습니다.</p>'; return; }
       box.innerHTML = tasks.map(t => {
@@ -1556,32 +1617,114 @@
       $('btnTestMode').className = `w-full rounded-xl py-2.5 text-xs font-bold ${state.testMode ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`;
       $('btnTestMode').innerText = state.testMode ? '🧪 테스트 모드 켜짐 → 끄기' : '테스트 모드 켜기';
       const otherAdmins = state.users.filter(u => u.role === 'admin' && u.email !== me().email).length;
-      $('teacherAccountList').innerHTML = state.users.map(u => {
+      const order = { admin: 0, viewer: 1, teacher: 2 };
+      const users = [...state.users].sort((a, b) => (order[a.role] - order[b.role]) || String(a.dept).localeCompare(String(b.dept)) || String(a.name).localeCompare(String(b.name)));
+      $('teacherAccountList').innerHTML = users.map(u => {
         const mine = u.email === me().email, e = esc(u.email);
-        const btns = mine ? `<span class="text-slate-400">(나)</span>${otherAdmins ? ` <button onclick="demoteUser('${e}')" class="text-amber-600 font-semibold">내 관리자 권한 내려놓기</button>` : ''}`
-          : (u.role === 'admin' ? `<button onclick="demoteUser('${e}')" class="text-amber-600 font-semibold">관리자 해제</button>` : `<button onclick="if(confirm('${esc(u.name)} 선생님을 전체 관리자로 지정할까요?')) act('setUserRole',{email:'${e}',role:'admin'})" class="text-rose-600 font-semibold">관리자로 지정</button>`)
+        const btns = mine
+          ? `<span class="text-slate-400">(나)</span>${otherAdmins ? ` <button onclick="openUserModal('${e}')" class="text-amber-600 font-semibold">내 관리자 권한 내려놓기</button>` : ''}`
+          : `<button onclick="openUserModal('${e}')" class="text-amber-600 font-semibold">권한·직책 변경</button>`
             + `<button onclick="resetUserPw('${e}')" class="text-indigo-600 font-semibold">비번 초기화</button><button onclick="if(confirm('${e} 계정을 삭제할까요?')) act('deleteUser',{email:'${e}'})" class="text-rose-500 font-semibold">삭제</button>`;
-        return `<div class="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-xl p-3 text-xs"><div><span class="${u.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'} px-2 py-0.5 rounded font-bold">${u.role === 'admin' ? '전체 관리자' : esc(u.dept) + ' ' + esc(u.position)}</span>
+        return `<div class="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-xl p-3 text-xs"><div>${roleBadge(u)}
           <b class="ml-1">${esc(u.name)}</b> <span class="text-slate-500">${e}</span></div><div class="flex flex-wrap gap-2 items-center">${btns}</div></div>`;
-      }).join('') + `<p class="text-[11px] text-slate-400 mt-2">권한 넘기기: ① 새 관리자 선생님 추가(또는 [관리자로 지정]) → ② 그 선생님 로그인 확인 → ③ 내 줄의 [내 관리자 권한 내려놓기]</p>`;
+      }).join('') + renderPositionManager()
+        + `<p class="text-[11px] text-slate-400 mt-2">권한 넘기기: ① 새 관리자 선생님 추가(또는 [권한·직책 변경 → 전체 관리자]) → ② 그 선생님 로그인 확인 → ③ 내 줄의 [내 관리자 권한 내려놓기]</p>`;
     }
-    function demoteUser(email) {
-      const u = state.users.find(x => x.email === email), mine = email === me().email;
-      openModal(mine ? '내 관리자 권한 내려놓기' : `${u.name} 관리자 해제`, `<p class="text-slate-600">아래 학과의 교사 계정으로 바뀝니다.</p>
-        <div><label class="lbl">학과</label><select id="dmDept" class="inp">${DEPT_NAMES.map(d => `<option>${d}</option>`).join('')}</select></div>
-        <div><label class="lbl">직책</label><select id="dmPos" class="inp"><option>학과부장</option><option selected>교사</option></select></div>`,
-        { okText: '변경', onOk: async () => { await api('setUserRole', { email, role: 'teacher', dept: $('dmDept').value, position: $('dmPos').value }); closeModal(); if (mine) state.activeTab = 'attendance'; await refresh(); return true; } });
+
+    // ---- 권한 / 직책 ----
+    const ROLE_INFO = {
+      teacher: { label: '학과 교사 (학과부장·교사)', hint: '자기 학과 학생만 조회·수정·삭제하고 통계를 볼 수 있습니다.' },
+      viewer: { label: '전체 조회 (진로진학부·상담·교감 등)', hint: '모든 학과의 학생·출결·통계·로드맵을 볼 수만 있습니다 (수정·삭제 불가). 채용 공고와 학사일정은 등록할 수 있습니다.' },
+      admin: { label: '전체 관리자', hint: '모든 학과 조회·수정에 더해 교사 계정, 학교 좌표, 테스트 모드까지 관리합니다.' }
+    };
+    function positions() { return state.positions || { teacher: ['학과부장', '교사'], viewer: ['진로진학부 교사', '상담 교사', '교감', '교장'] }; }
+    function roleBadge(u) {
+      if (u.role === 'admin') return `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">전체 관리자</span>`;
+      if (u.role === 'viewer') return `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">${esc(u.position)} · 전체 조회</span>`;
+      return `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold">${esc(u.dept)} ${esc(u.position)}</span>`;
     }
-    function resetUserPw(email) { const pw = prompt('새 비밀번호 (8자 이상)'); if (pw) act('resetUserPw', { email, pw }, '변경되었습니다.'); }
+    function renderPositionManager() {
+      const p = positions();
+      const group = (key, title, cls) => `<div class="mt-1"><p class="font-semibold text-slate-600 mb-1">${title}</p><div class="flex flex-wrap gap-1.5 items-center">
+        ${p[key].map(x => `<span class="${cls} rounded-full pl-2.5 pr-1 py-0.5 flex items-center gap-1">${esc(x)}<button onclick="removePosition('${key}','${esc(x).replace(/'/g, '&#39;')}')" title="삭제" class="w-4 h-4 rounded-full hover:bg-white/70 leading-none">✕</button></span>`).join('')}
+        <button onclick="addPositionPrompt('${key}')" class="border border-dashed border-slate-300 hover:border-indigo-400 hover:text-indigo-600 rounded-full px-2.5 py-0.5 font-semibold">+ 직책 추가</button></div></div>`;
+      return `<div class="mt-4 border border-slate-200 bg-slate-50 rounded-xl p-3 text-xs space-y-2">
+        <p class="font-bold text-slate-800">📋 직책 목록 <span class="font-normal text-slate-400">— 계정 추가할 때 고르는 선택지입니다</span></p>
+        ${group('viewer', '전체 조회 직책 (모든 학과를 볼 수만 있음)', 'bg-amber-100 text-amber-800')}
+        ${group('teacher', '학과 교사 직책 (자기 학과 관리)', 'bg-indigo-100 text-indigo-700')}</div>`;
+    }
+    async function savePositionList(next) {
+      try { state.positions = await api('savePositions', next); if (role() === 'admin') renderAdmin(); return true; }
+      catch (e) { alert(e.message); return false; }
+    }
+    async function addPositionPrompt(key) {
+      const name = (prompt(key === 'viewer' ? '추가할 직책 이름 (모든 학과를 볼 수만 있는 직책)\n예: 교감, 취업지원관, 진로진학부장' : '추가할 학과 교사 직책 이름\n예: 실습 담당, 기간제 교사') || '').trim();
+      if (!name) return null;
+      const p = positions();
+      if (p[key].includes(name)) { alert('이미 있는 직책입니다.'); return name; }
+      return (await savePositionList({ ...p, [key]: [...p[key], name] })) ? name : null;
+    }
+    function removePosition(key, name) {
+      const p = positions();
+      if (!confirm(`'${name}' 직책을 목록에서 뺄까요?\n(이미 이 직책으로 만든 계정은 그대로 유지됩니다)`)) return;
+      savePositionList({ ...p, [key]: p[key].filter(x => x !== name) });
+    }
+
+    // ---- 계정 추가 / 권한·직책 변경 (같은 입력 화면 사용) ----
+    function userRoleFieldsHtml(u = {}) {
+      const role = u.role || 'teacher';
+      return `<div><label class="lbl">권한</label><select id="tuRole" class="inp" onchange="userFormSync()">
+          ${['teacher', 'viewer', 'admin'].map(r => `<option value="${r}" ${r === role ? 'selected' : ''}>${ROLE_INFO[r].label}</option>`).join('')}</select>
+          <p id="tuRoleHint" class="text-[11px] text-slate-500 mt-1"></p></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div id="tuDeptBox"><label class="lbl">학과</label><select id="tuDept" class="inp">${DEPT_NAMES.map(d => `<option ${d === u.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+          <div id="tuPosBox"><label class="lbl">직책</label><select id="tuPos" class="inp" onchange="onPositionPick()" data-initial="${esc(u.position || '')}"></select></div>
+        </div>`;
+    }
+    function userFormSync(selected) {
+      const role = $('tuRole').value, p = positions();
+      $('tuRoleHint').innerText = ROLE_INFO[role].hint;
+      $('tuDeptBox').classList.toggle('hidden', role !== 'teacher');
+      $('tuPosBox').classList.toggle('hidden', role === 'admin');
+      const list = role === 'viewer' ? p.viewer : p.teacher;
+      const want = selected || $('tuPos').dataset.initial;
+      $('tuPos').innerHTML = list.map(x => `<option ${x === want ? 'selected' : ''}>${esc(x)}</option>`).join('') + `<option value="__new">＋ 새 직책 추가…</option>`;
+      if (!list.includes(want) && role === 'teacher') $('tuPos').value = list.includes('교사') ? '교사' : list[0];
+    }
+    async function onPositionPick() {
+      if ($('tuPos').value !== '__new') return;
+      const role = $('tuRole').value, name = await addPositionPrompt(role === 'viewer' ? 'viewer' : 'teacher');
+      userFormSync(name || undefined);
+    }
+    function readUserRole() { return { role: $('tuRole').value, dept: $('tuDept').value, position: $('tuRole').value === 'admin' ? '관리자' : $('tuPos').value }; }
     function openTeacherModal() {
       openModal('👩‍🏫 교사 계정 추가', `<div class="grid grid-cols-2 gap-3">
-        <div><label class="lbl">이름</label><input id="tcName" class="inp"></div><div><label class="lbl">구글 이메일</label><input id="tcEmail" type="email" class="inp"></div>
-        <div><label class="lbl">권한</label><select id="tcRole" class="inp" onchange="tcDeptBox.classList.toggle('hidden', this.value==='admin')"><option value="teacher">학과 교사</option><option value="admin">전체 관리자</option></select></div>
-        <div id="tcDeptBox"><label class="lbl">학과</label><select id="tcDept" class="inp">${DEPT_NAMES.map(d => `<option>${d}</option>`).join('')}</select></div>
-        <div><label class="lbl">직책</label><select id="tcPos" class="inp"><option>학과부장</option><option selected>교사</option></select></div>
-        <div><label class="lbl">초기 비밀번호 (8자 이상)</label><input id="tcPw" class="inp"></div></div>`,
-        { okText: '계정 추가', onOk: () => modalAct('addUser', { name: $('tcName').value, email: $('tcEmail').value, role: $('tcRole').value, dept: $('tcDept').value, position: $('tcPos').value, pw: $('tcPw').value }, '추가되었습니다. 선생님께 이메일과 초기 비밀번호를 알려주세요.') });
+          <div><label class="lbl">이름</label><input id="tcName" class="inp"></div><div><label class="lbl">구글 이메일</label><input id="tcEmail" type="email" class="inp"></div></div>
+        ${userRoleFieldsHtml()}
+        <div><label class="lbl">초기 비밀번호 (8자 이상)</label><input id="tcPw" class="inp" placeholder="예: admin1234 → 첫 로그인 때 변경 창이 뜹니다"></div>`,
+        { okText: '계정 추가', onOk: () => needNewServer() !== false && modalAct('addUser', Object.assign({ name: $('tcName').value, email: $('tcEmail').value, pw: $('tcPw').value }, readUserRole()), '추가되었습니다. 선생님께 사이트 주소, 이메일, 초기 비밀번호를 알려주세요.') });
+      userFormSync();
     }
+    function openUserModal(email) {
+      const u = state.users.find(x => x.email === email), mine = email === me().email;
+      openModal(mine ? '내 관리자 권한 내려놓기' : `${u.name} 선생님 권한·직책 변경`,
+        (mine ? '<p class="bg-amber-50 border border-amber-200 rounded-lg p-2 text-amber-900">관리자 권한을 내려놓으면 [관리자 설정] 탭이 사라집니다. 다른 관리자가 있는지 꼭 확인하세요.</p>' : '')
+        + userRoleFieldsHtml(mine ? { role: 'teacher' } : u),
+        { okText: '변경', onOk: async () => {
+          if (mine && $('tuRole').value === 'admin') return modalErr('다른 권한을 선택하세요.');
+          if (needNewServer() === false) return false;
+          await api('setUserRole', Object.assign({ email }, readUserRole())); closeModal();
+          if (mine) state.activeTab = 'attendance';
+          await refresh(); return true; } });
+      userFormSync();
+    }
+    // 서버를 아직 새 버전으로 배포하지 않았으면 '전체 조회' 권한을 만들지 않도록 막음
+    function needNewServer() {
+      if ($('tuRole').value === 'viewer' && !state.serverHasViewer)
+        return modalErr('전체 조회(진로·상담·교감) 권한을 쓰려면 먼저 서버(Apps Script)를 새 버전으로 배포해야 합니다.\n[관리자 사용 설명서 → 프로그램 고쳤을 때] 참고');
+      return true;
+    }
+    function resetUserPw(email) { const pw = prompt('새 비밀번호 (8자 이상)'); if (pw) act('resetUserPw', { email, pw }, '변경되었습니다.'); }
     function openMyPwModal() {
       openModal('🔑 내 비밀번호 변경', `<div><label class="lbl">현재 비밀번호</label><input id="mpCur" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 (8자 이상)</label><input id="mpNew" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 확인</label><input id="mpNew2" type="password" class="inp"></div>`,
         { okText: '변경', onOk: async () => { if ($('mpNew').value !== $('mpNew2').value) return modalErr('새 비밀번호 확인이 일치하지 않습니다.'); await api('changeMyPw', { cur: $('mpCur').value, pw: $('mpNew').value }); alert('비밀번호가 변경되었습니다.'); return true; } });
