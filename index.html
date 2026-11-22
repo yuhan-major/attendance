@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전공심화반 통합 관리 & GPS/QR 출결</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; }
+    .scanner-laser { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, rgba(239,68,68,0) 0%, rgba(239,68,68,1) 50%, rgba(239,68,68,0) 100%); box-shadow: 0 0 15px #ef4444; animation: scan 2s infinite ease-in-out; }
+    @keyframes scan { 0% { top: 5%; } 50% { top: 90%; } 100% { top: 5%; } }
+    @media print {
+      body * { visibility: hidden; }
+      #printable-qr-section, #printable-qr-section * { visibility: visible; }
+      #printable-qr-section { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    [contenteditable][placeholder]:empty:before { content: attr(placeholder); color: #94a3b8; pointer-events: none; }
+    #memoEditor img, .memo-body img { max-width: 100%; border-radius: 8px; margin: 4px 0; }
+    .grid-cell[contenteditable="true"]:focus { outline: 2px solid #6366f1; background: #fff; border-radius: 4px; }
+    .phone-mask { filter: blur(4px); transition: filter .15s; cursor: pointer; }
+    .phone-mask:hover, .phone-mask:focus { filter: none; }
+    .inp { width: 100%; border: 1px solid #cbd5e1; border-radius: .5rem; padding: .55rem .65rem; font-size: .75rem; background: #fff; }
+    .inp:focus { outline: none; box-shadow: 0 0 0 2px #6366f1; }
+    .lbl { display: block; font-size: .72rem; font-weight: 600; color: #475569; margin-bottom: .25rem; }
+    .spinner { width: 18px; height: 18px; border: 3px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+  <!-- 로딩 표시 -->
+  <div id="loading" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[60] bg-white border border-indigo-200 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 text-xs font-semibold text-indigo-700">
+    <div class="spinner"></div> 처리 중...
+  </div>
+
+  <!-- 설정 안 됨 / 오류 화면 -->
+  <section id="configScreen" class="screen hidden min-h-screen flex items-center justify-center p-4 bg-slate-900">
+    <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-3 text-sm">
+      <h1 class="text-lg font-extrabold">⚙️ 서버 연결이 필요합니다</h1>
+      <p id="configMsg" class="text-slate-600 leading-relaxed">index.html 맨 아래쪽 스크립트의 <code class="bg-slate-100 px-1 rounded">API_URL</code>에 Apps Script 웹 앱 주소를 넣어주세요.</p>
+      <button onclick="location.reload()" class="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl">다시 시도</button>
+    </div>
+  </section>
+
+  <!-- LOGIN -->
+  <section id="loginScreen" class="screen hidden min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-5">
+      <div class="text-center space-y-2">
+        <div class="inline-flex bg-indigo-600 text-white p-3 rounded-2xl shadow"><i data-lucide="graduation-cap" class="w-8 h-8"></i></div>
+        <h1 class="text-xl font-extrabold text-slate-900">전공심화반 통합 관리 시스템</h1>
+        <p class="text-xs text-slate-500">유한공업고등학교 · 직무능력 및 출결 통합 관리센터</p>
+      </div>
+      <form onsubmit="doLogin(event)" class="space-y-3">
+        <div><label class="lbl">구글 이메일 또는 학번</label><input id="loginEmail" autocomplete="username" class="inp" placeholder="example@gmail.com 또는 3104" required></div>
+        <div><label class="lbl">비밀번호</label><input id="loginPw" type="password" autocomplete="current-password" class="inp" required></div>
+        <p id="loginError" class="text-xs text-rose-600 font-semibold hidden"></p>
+        <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-sm shadow">로그인</button>
+      </form>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <button onclick="showSignup()" class="bg-slate-100 hover:bg-slate-200 rounded-xl py-2.5 font-semibold">🧑‍🎓 학생 회원가입</button>
+        <button onclick="location.search='?qr=attend'" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl py-2.5 font-semibold">📱 QR 간편 출석</button>
+      </div>
+      <p class="text-[11px] text-slate-400 text-center leading-relaxed">학생은 <b>학번</b>으로도 로그인할 수 있습니다. (처음 비밀번호 = 학번)<br>로그인 후 [내 정보]에서 비밀번호와 PIN을 꼭 바꾸세요.</p>
+    </div>
+  </section>
+
+  <!-- SIGNUP -->
+  <section id="signupScreen" class="screen hidden min-h-screen flex items-start sm:items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 my-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-extrabold text-slate-900">🧑‍🎓 전공심화반 학생 회원가입</h2>
+          <p class="text-xs text-slate-500">가입 후 담당 학과 선생님이 <b>승인</b>하면 로그인할 수 있습니다.</p>
+        </div>
+        <button onclick="showScreen('login')" class="text-xs text-slate-500 hover:text-slate-800 font-semibold">← 로그인으로</button>
+      </div>
+      <div id="signupFields"></div>
+      <label class="flex items-start gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <input type="checkbox" id="signupAgree" class="mt-0.5">
+        <span><b>개인정보 수집·이용 동의 (필수)</b><br>수집 항목: 학번, 이름, 학과, 학년, 연락처, 이메일, 출결 시 학교와의 거리. 이용 목적: 전공심화반 출결 및 취업 지도. 보유 기간: 졸업 시까지.</span>
+      </label>
+      <p id="signupError" class="text-xs text-rose-600 font-semibold hidden"></p>
+      <button onclick="submitSignup()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-sm shadow">가입 신청하기</button>
+    </div>
+  </section>
+
+  <!-- QUICK QR CHECK-IN -->
+  <section id="quickScreen" class="screen hidden min-h-screen flex items-start sm:items-center justify-center p-4 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 my-6">
+      <div class="text-center space-y-1">
+        <span id="qkBadge" class="inline-block bg-indigo-100 text-indigo-700 font-bold text-[11px] px-3 py-1 rounded-full">교실 참석 QR</span>
+        <h2 class="text-lg font-extrabold text-slate-900" id="qkTitle">QR 간편 출석</h2>
+        <p class="text-xs text-slate-500" id="qkDept">유한공업고등학교 전공심화반</p>
+      </div>
+      <div id="qkForm" class="space-y-3">
+        <div id="qkGps" class="text-xs rounded-xl p-2.5 border text-center font-semibold bg-slate-50 border-slate-200 text-slate-500">📍 GPS 확인 중...</div>
+        <div><label class="lbl">운영 구분</label>
+          <select id="qkSession" class="inp"><option value="zero">0교시</option><option value="after">방과후</option></select>
+          <p id="qkSessionHint" class="text-[11px] text-slate-400 mt-1"></p></div>
+        <div><label class="lbl">학번</label><input id="qkId" inputmode="numeric" maxlength="5" class="inp text-center text-lg font-mono tracking-widest" placeholder="3104"></div>
+        <div><label class="lbl">출석 PIN (4자리)</label><input id="qkPin" type="password" inputmode="numeric" maxlength="4" class="inp text-center text-lg font-mono tracking-[0.6em]" placeholder="••••"></div>
+        <div id="qkAbsentBox" class="hidden space-y-3">
+          <div><label class="lbl">불참 사유 구분</label>
+            <select id="qkAbsentCat" class="inp"><option value="병원 진료">🏥 병원 진료 및 치료</option><option value="대회/자격증 준비">🏆 대회/자격증 시험 참가</option><option value="교사 면담">👨‍🏫 담임/담당교사 특별상담</option><option value="기타 공결 사유">📝 기타 인정 공결</option></select></div>
+          <div><label class="lbl">상세 사유</label><textarea id="qkAbsentDetail" rows="2" class="inp" placeholder="사유를 적어주세요"></textarea></div>
+        </div>
+        <button onclick="submitQuickCheck()" id="qkSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow text-sm">출석 인증하기</button>
+      </div>
+      <div id="qkResult" class="hidden text-center space-y-3">
+        <div id="qkResultIcon" class="text-5xl"></div>
+        <p id="qkResultMsg" class="text-sm font-semibold text-slate-800 whitespace-pre-line"></p>
+        <button onclick="resetQuickCheck()" class="w-full bg-slate-100 hover:bg-slate-200 rounded-xl py-2.5 text-xs font-semibold">다시 하기</button>
+      </div>
+      <button onclick="location.href=location.pathname" class="w-full text-[11px] text-slate-400 hover:text-slate-700">전체 시스템 로그인 화면으로 →</button>
+    </div>
+  </section>
+
+  <!-- MAIN APP -->
+  <section id="appScreen" class="screen hidden min-h-screen flex flex-col">
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <button onclick="goHome()" class="flex items-center space-x-3 text-left group" title="처음 화면으로">
+          <div class="bg-indigo-600 group-hover:bg-indigo-500 text-white p-2 rounded-xl shadow"><i data-lucide="graduation-cap" class="w-6 h-6"></i></div>
+          <div>
+            <h1 class="font-bold text-lg leading-tight">전공심화반 통합 관리 시스템</h1>
+            <p class="text-xs text-slate-400">유한공업고등학교 · 직무능력 및 출결 통합 관리센터</p>
+          </div>
+        </button>
+        <div class="flex items-center flex-wrap gap-2 text-sm">
+          <div id="adminDeptBox" class="hidden flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
+            <span class="text-xs text-slate-400 px-2 font-medium">학과:</span>
+            <select id="adminDeptSelect" onchange="state.adminDept=this.value;renderApp()" class="bg-slate-900 text-white text-xs rounded border border-slate-700 px-2 py-1 font-medium"></select>
+          </div>
+          <button id="userChip" onclick="role()==='student' ? setActiveTab('students') : openMyPwModal()" title="내 비밀번호 변경" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 border border-slate-700 text-xs"></button>
+          <button onclick="refresh()" title="새로고침" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i></button>
+          <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold">로그아웃</button>
+        </div>
+      </div>
+      <nav class="bg-slate-800 border-t border-slate-700/60 text-slate-300 overflow-x-auto custom-scrollbar">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-1 font-medium text-xs sm:text-sm whitespace-nowrap">
+          <button onclick="setActiveTab('attendance')" id="tab-attendance" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="qr-code" class="w-4 h-4"></i> 출결 & 전체공지</button>
+          <button onclick="setActiveTab('students')" id="tab-students" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> <span id="tabStudentsLabel">학생 명단</span></button>
+          <button onclick="setActiveTab('tasks')" id="tab-tasks" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="check-square" class="w-4 h-4"></i> 과제 ('다했니')</button>
+          <button onclick="setActiveTab('roadmap')" id="tab-roadmap" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="target" class="w-4 h-4"></i> 취업 로드맵</button>
+          <button onclick="setActiveTab('notices')" id="tab-notices" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="bell" class="w-4 h-4"></i> 학과 공지 & 메모</button>
+          <button onclick="setActiveTab('academic')" id="tab-academic" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="calendar" class="w-4 h-4"></i> 학사일정 & NCS</button>
+          <button onclick="setActiveTab('jobs')" id="tab-jobs" data-roles="admin,teacher,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="briefcase" class="w-4 h-4"></i> 채용 공고</button>
+          <button onclick="setActiveTab('admin')" id="tab-admin" data-roles="admin" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="shield" class="w-4 h-4"></i> 관리자 설정</button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+      <div id="noticeStrip" class="mb-5 space-y-2"></div>
+
+      <!-- ===== 출결 ===== -->
+      <div id="sec-attendance" class="tab-content space-y-6">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="megaphone" class="w-5 h-5 text-indigo-600"></i> 전체 공지사항 <span class="text-[11px] font-normal text-slate-400">(모든 학과 공통)</span></h2>
+            <button id="btnAddGlobalNotice" onclick="openGlobalNoticeModal()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">+ 전체 공지 작성</button>
+          </div>
+          <div id="globalNoticeList" class="space-y-2"></div>
+        </div>
+
+        <!-- 실시간 현황판 (교사/관리자) -->
+        <div id="liveBoardCard" class="hidden bg-white rounded-2xl p-5 shadow-sm border-2 border-indigo-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2">📊 오늘 실시간 출결 현황 <span id="liveScope" class="text-xs font-normal text-slate-400"></span></h2>
+            <div class="flex items-center gap-2 text-xs">
+              <div class="flex bg-slate-100 rounded-lg p-0.5 font-semibold">
+                <button id="liveBtnZero" onclick="state.liveSession='zero';renderLiveBoard()" class="px-3 py-1 rounded-md">0교시</button>
+                <button id="liveBtnAfter" onclick="state.liveSession='after';renderLiveBoard()" class="px-3 py-1 rounded-md">방과후</button>
+              </div>
+              <span id="liveUpdated" class="text-slate-400"></span>
+              <button onclick="refreshLive(true)" class="bg-slate-100 hover:bg-slate-200 rounded-lg px-2 py-1">↻</button>
+            </div>
+          </div>
+          <div id="liveCounts" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3"></div>
+          <div id="liveGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+        </div>
+
+        <!-- GPS -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <div id="gpsStatusIconBg" class="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="font-bold text-slate-800 text-base">GPS 위치 검증 (기준: 학교)</h2>
+                <span id="gpsDistanceBadge" class="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-slate-100 text-slate-500 border-slate-200">미측정</span>
+              </div>
+              <p id="gpsCoordText" class="text-xs text-slate-500 mt-0.5"></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="recheckLocation()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1"><i data-lucide="locate" class="w-3.5 h-3.5"></i> 내 위치 측정</button>
+            <button id="btnGoAdminGps" onclick="setActiveTab('admin')" class="hidden bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-200">학교 좌표 설정</button>
+          </div>
+        </div>
+
+        <!-- 학생 -->
+        <div id="studentAttView" class="hidden space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">오늘의 출결</span>
+                <span class="text-xs text-slate-400 font-mono" id="liveClockText">--:--:--</span>
+              </div>
+              <div id="todayScheduleBox" class="space-y-2 text-xs"></div>
+              <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[11px] text-indigo-900 leading-relaxed">📱 휴대폰 기본 카메라로 교실/교무실 QR을 비추면 출석 페이지가 열립니다. 아래 버튼은 로그인한 상태에서 같은 동작을 합니다.</div>
+              <button onclick="studentScan('attend')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 text-sm"><i data-lucide="camera" class="w-5 h-5"></i> [교실] 참석 (입/퇴실)</button>
+              <button onclick="studentScan('absent')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl border border-slate-300 flex items-center justify-center gap-2 text-xs"><i data-lucide="building" class="w-4 h-4"></i> [교무실] 사유 불참</button>
+              <div id="studentLockWarning" class="rounded-xl p-3 text-xs"></div>
+            </div>
+            <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="calendar-check" class="w-5 h-5 text-indigo-600"></i> 내 출결 기록 및 가산점</h3>
+                <span id="studentBonusBadge" class="bg-amber-100 text-amber-800 font-bold text-xs px-3 py-1 rounded-full border border-amber-300"></span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <div class="bg-indigo-50/70 border border-indigo-100 p-3 rounded-xl"><p class="text-xs text-indigo-600 font-medium">이번 달 출석률</p><p class="text-xl font-extrabold text-indigo-900 mt-1" id="myAttRate">-</p></div>
+                <div class="bg-emerald-50/70 border border-emerald-100 p-3 rounded-xl"><p class="text-xs text-emerald-600 font-medium">정상 출석</p><p class="text-xl font-extrabold text-emerald-900 mt-1" id="myAttCount">0회</p></div>
+                <div class="bg-amber-50/70 border border-amber-100 p-3 rounded-xl"><p class="text-xs text-amber-600 font-medium">지각</p><p class="text-xl font-extrabold text-amber-900 mt-1" id="myTardyCount">0회</p></div>
+                <div class="bg-rose-50/70 border border-rose-100 p-3 rounded-xl"><p class="text-xs text-rose-600 font-medium">사유/무단 불참</p><p class="text-xl font-extrabold text-rose-900 mt-1" id="myAbsentCount">0회</p></div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead><tr class="bg-slate-100 text-slate-600 border-b border-slate-200"><th class="p-2.5 font-bold">날짜</th><th class="p-2.5 font-bold">구분</th><th class="p-2.5 font-bold">입실</th><th class="p-2.5 font-bold">퇴실</th><th class="p-2.5 font-bold">상태</th><th class="p-2.5 font-bold">GPS</th><th class="p-2.5 font-bold">비고</th></tr></thead>
+                  <tbody id="studentAttLogsBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 교사 -->
+        <div id="teacherAttView" class="space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-3"><i data-lucide="clock" class="w-4 h-4 text-indigo-600"></i> 1. 0교시 / 방과후 시간 규칙 <span class="text-[11px] font-normal text-slate-400">(전교 공통)</span></h3>
+              <div class="space-y-2">
+                <p class="text-xs font-bold text-indigo-700">🌅 0교시 (1회 스캔 · 입실만)</p>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                  <div><label class="lbl">입실 시작</label><input type="time" id="cfgZeroIn" class="inp font-mono"></div>
+                  <div><label class="lbl">정상 마감</label><input type="time" id="cfgZeroEnd" class="inp font-mono"></div>
+                  <div><label class="lbl">지각 인정까지</label><input type="time" id="cfgZeroLate" class="inp font-mono"></div>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <p class="text-xs font-bold text-emerald-700">🌇 방과후 (2회 스캔 · 입실/퇴실)</p>
+                <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th><th class="text-left font-semibold">교시</th></tr></thead><tbody id="afterCfgBody"></tbody></table>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div><label class="lbl">입실 가능 (시작 n분 전)</label><input type="number" min="0" id="cfgEarly" class="inp font-mono"></div>
+                  <div><label class="lbl">지각 인정 (시작 후 n분)</label><input type="number" min="0" id="cfgLate" class="inp font-mono"></div>
+                  <div><label class="lbl">퇴실 가능 (종료 n분 전)</label><input type="number" min="0" id="cfgOutBefore" class="inp font-mono"></div>
+                  <div><label class="lbl">퇴실 마감 (종료 후 n분)</label><input type="number" min="0" id="cfgOutAfter" class="inp font-mono"></div>
+                </div>
+              </div>
+              <button onclick="saveTimeSettings()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 rounded-xl text-xs">시간 규칙 저장</button>
+            </div>
+            <div class="lg:col-span-3 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-indigo-600"></i> 2. 운영일 지정 & 일 마감(Lock) <span class="text-[11px] font-normal text-slate-400">(전교 공통)</span></h3>
+                <div class="flex bg-slate-100 rounded-lg p-0.5 text-xs font-semibold">
+                  <button id="calBtnZero" onclick="state.calSession='zero';renderCalendar()" class="px-3 py-1 rounded-md">0교시</button>
+                  <button id="calBtnAfter" onclick="state.calSession='after';renderCalendar()" class="px-3 py-1 rounded-md">방과후</button>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs">
+                <div class="flex items-center gap-2 font-bold text-slate-700">
+                  <button onclick="shiftCalMonth(-1)" class="px-2 py-1 rounded hover:bg-slate-100">◀</button><span id="calMonthLabel"></span><button onclick="shiftCalMonth(1)" class="px-2 py-1 rounded hover:bg-slate-100">▶</button>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="fillMonthWeekdays()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg px-2.5 py-1 font-semibold">이번 달 평일 일괄 운영</button>
+                  <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-indigo-600 rounded-full"></span>운영</span>
+                  <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span>마감</span>
+                </div>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-1"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+              <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
+              <p class="text-[11px] text-slate-400 mt-2">※ 날짜 클릭 = 운영/미운영, 🔒 = 일 마감(학생 등록 차단, 미등록자는 무단불참 집계)</p>
+            </div>
+          </div>
+
+          <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex flex-wrap items-center gap-2"><span class="bg-indigo-500 text-white text-xs px-2.5 py-0.5 rounded-full font-bold">고정 부착용</span><h3 class="font-bold text-lg">3. 교실/교무실 부착용 QR 인쇄</h3></div>
+              <p class="text-xs text-indigo-200 mt-1">학과별로 한 번 인쇄해 붙여두면 계속 사용합니다. 0교시·방과후 공용(시간에 따라 자동 구분).</p>
+            </div>
+            <button onclick="openPrintableQrModal()" class="bg-white text-indigo-900 hover:bg-indigo-50 font-bold text-xs px-5 py-3 rounded-xl shadow-md flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i> 부착용 QR 인쇄/확대 보기</button>
+          </div>
+
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="award" class="w-5 h-5 text-amber-500"></i> 4. 학생별 출결 통계 및 추천 가산점 <span id="statsScopeLabel" class="text-xs font-normal text-slate-400"></span></h3>
+                <p class="text-xs text-slate-500">출석률 90% 이상 +15점, 지각 -1점, 무단불참 -3점 (최저 0점). 사유불참은 출석률 계산에서 제외.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="statsSessionSelect" onchange="renderTeacherAttTable()" class="border border-slate-300 rounded-lg px-2 py-2 text-xs"><option value="all">0교시+방과후</option><option value="zero">0교시</option><option value="after">방과후</option></select>
+                <select id="statsPeriodSelect" onchange="renderTeacherAttTable()" class="border border-slate-300 rounded-lg px-2 py-2 text-xs"><option value="month">이번 달</option><option value="year">올해 전체</option></select>
+                <button onclick="exportAttendanceCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1"><i data-lucide="download" class="w-3.5 h-3.5"></i> 엑셀 CSV</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead><tr class="bg-slate-100 text-slate-700 border-b border-slate-200"><th class="p-3 font-bold">학번 / 이름</th><th class="p-3 font-bold">학과</th><th class="p-3 font-bold">운영일</th><th class="p-3 font-bold">정상</th><th class="p-3 font-bold">지각</th><th class="p-3 font-bold">사유불참</th><th class="p-3 font-bold">무단불참</th><th class="p-3 font-bold">출석률</th><th class="p-3 font-bold">가산점</th><th class="p-3 font-bold">관리</th></tr></thead>
+                <tbody id="teacherAttTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 학생 명단 / 내 정보 ===== -->
+      <div id="sec-students" class="tab-content hidden space-y-5">
+        <div id="teacherStudentView" class="space-y-5">
+          <div id="pendingBox" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-5">
+            <h3 class="font-bold text-amber-900 text-sm mb-3">⏳ 가입 승인 대기 학생</h3>
+            <div id="pendingList" class="space-y-2"></div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 class="font-bold text-slate-900 text-base">전공심화반 학생 명단 <span id="studentScopeLabel" class="text-xs font-normal text-slate-400"></span></h2>
+                <p class="text-xs text-slate-500">셀을 클릭해 바로 수정(자동 저장). 연락처는 마우스를 올리면 보입니다.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="openTeacherAddStudent()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</button>
+                <button onclick="exportStudentCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 명단 CSV</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead><tr class="bg-slate-100 text-slate-700 border-b border-slate-200"><th class="p-2.5 font-bold">학번</th><th class="p-2.5 font-bold">이름</th><th class="p-2.5 font-bold">학과</th><th class="p-2.5 font-bold">학년</th><th class="p-2.5 font-bold">목표 기업</th><th class="p-2.5 font-bold">보유 자격증</th><th class="p-2.5 font-bold">가산점</th><th class="p-2.5 font-bold">NCS 불참</th><th class="p-2.5 font-bold">연락처</th><th class="p-2.5 font-bold">이메일</th><th class="p-2.5 font-bold">관리</th></tr></thead>
+                <tbody id="studentGridBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="myInfoView" class="hidden"></div>
+      </div>
+
+      <!-- ===== 과제 ===== -->
+      <div id="sec-tasks" class="tab-content hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div><h2 class="font-bold text-slate-900 text-base">다했니 / 다했어 과제 및 학습 진도</h2><p class="text-xs text-slate-500">학과별 실습 및 제출 과제 현황</p></div>
+            <button id="btnNewTask" onclick="openNewTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg">+ 새 과제 출제</button>
+          </div>
+          <div id="taskListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+      </div>
+
+      <!-- ===== 로드맵 ===== -->
+      <div id="sec-roadmap" class="tab-content hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <h2 class="font-bold text-slate-900 text-base mb-1">목표기업 & 자격증 성장 로드맵</h2>
+          <p class="text-xs text-slate-500 mb-6">단계별 맞춤 취업 로드맵 달성률</p>
+          <div id="roadmapCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
+        </div>
+      </div>
+
+      <!-- ===== 공지 & 메모 ===== -->
+      <div id="sec-notices" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="megaphone" class="w-5 h-5 text-emerald-600"></i> 학과 공지 <span id="deptNoticeScope" class="text-xs font-normal text-slate-400"></span></h2>
+              <button id="btnAddDeptNotice" onclick="openDeptNoticeModal()" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg">+ 학과 공지 작성</button>
+            </div>
+            <p class="text-[11px] text-slate-400">학과 공지는 해당 학과 학생·선생님과 전체 관리자만 볼 수 있습니다.</p>
+            <div id="deptNoticeList" class="space-y-2"></div>
+          </div>
+          <div id="memoCard" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="sticky-note" class="w-5 h-5 text-amber-500"></i> 나만 보는 메모장</h2>
+              <span class="text-[11px] text-slate-400">Ctrl+V로 캡처 이미지 첨부</span>
+            </div>
+            <input type="text" id="memoTitleInput" placeholder="메모 제목..." class="inp">
+            <div id="memoEditor" contenteditable="true" class="min-h-[120px] max-h-[220px] overflow-y-auto border border-slate-300 rounded-lg p-3 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="메모 내용을 작성하고, 캡처 이미지를 Ctrl+V로 붙여넣으세요."></div>
+            <button onclick="saveMemo()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-xl">메모 저장하기</button>
+            <div id="memoList" class="space-y-3 pt-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 학사일정 & NCS ===== -->
+      <div id="sec-academic" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i> 학사일정</h2>
+              <button id="btnAddEvent" onclick="addAcademicEventModal()" class="bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200">+ 일정 추가</button>
+            </div>
+            <div id="academicEventsList" class="space-y-2 text-xs"></div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="border-b border-slate-100 pb-3">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5 text-rose-500"></i> NCS 모의시험 불참 누적 경고</h2>
+              <p class="text-xs text-slate-500">NCS 시험 2회 이상 무단 불참 시 취업 추천에서 제외됩니다.</p>
+            </div>
+            <div id="ncsWarningList" class="space-y-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 채용 ===== -->
+      <div id="sec-jobs" class="tab-content hidden">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div><h2 class="font-bold text-slate-900 text-base">공기업/대기업 채용 공고</h2><p class="text-xs text-slate-500">핵심 자격 및 우대조건 요약</p></div>
+            <button id="btnNewJob" onclick="addJobModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg">+ 공고 등록</button>
+          </div>
+          <div id="jobsList" class="space-y-4"></div>
+        </div>
+      </div>
+
+      <!-- ===== 관리자 ===== -->
+      <div id="sec-admin" class="tab-content hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="space-y-6">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2 border-b border-slate-100 pb-3"><i data-lucide="map-pin" class="w-5 h-5 text-indigo-600"></i> 학교 GPS 기준 좌표</h2>
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed">
+                유한공업고등학교: <b>서울 구로구 경인로 8</b>. 기본값은 대략적인 좌표입니다.<br>
+                <b>가장 정확한 방법</b>: 학교 본관에서 휴대폰으로 이 화면을 열고 [현재 위치 가져오기] → [좌표 저장].
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="lbl">위도 (Lat)</label><input id="admLat" class="inp font-mono" inputmode="decimal"></div>
+                <div><label class="lbl">경도 (Lng)</label><input id="admLng" class="inp font-mono" inputmode="decimal"></div>
+                <div><label class="lbl">허용 반경 (m)</label><input id="admRadius" type="number" min="50" class="inp font-mono"></div>
+                <div class="flex items-end"><a id="admMapLink" target="_blank" rel="noopener" class="w-full text-center bg-slate-100 hover:bg-slate-200 rounded-lg py-2 text-xs font-semibold">🗺️ 구글 지도에서 확인</a></div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="fillCurrentLocation()" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl py-2 text-xs font-semibold">📍 현재 위치 가져오기</button>
+                <button onclick="saveSchoolLocation()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2 text-xs font-bold">좌표 저장</button>
+              </div>
+              <p id="admLocStatus" class="text-[11px] text-slate-400"></p>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-3">
+              <h2 class="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">🧪 테스트 모드</h2>
+              <p class="text-xs text-slate-600 leading-relaxed">켜면 화면 오른쪽 아래에 <b>시연 설정</b>(가짜 날짜·시각·GPS 위치)이 나타나 PC에서도 출석을 시험할 수 있습니다.<br><b class="text-rose-600">실제 운영 전에 반드시 끄세요.</b> 켜져 있으면 학생이 위치를 속일 수 있습니다.</p>
+              <button id="btnTestMode" onclick="toggleTestMode()" class="w-full rounded-xl py-2.5 text-xs font-bold"></button>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-2">
+              <h2 class="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">🔗 사이트 주소 (QR에 들어갈 주소)</h2>
+              <input id="admSiteUrl" class="inp font-mono" placeholder="https://아이디.github.io/저장소이름/">
+              <p class="text-[11px] text-slate-400">비워두면 지금 열린 주소를 사용합니다. 보통 비워두면 됩니다.</p>
+              <button onclick="saveSiteUrl()" class="bg-slate-800 hover:bg-slate-900 text-white rounded-xl px-4 py-2 text-xs font-semibold">주소 저장</button>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4 self-start">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5 text-indigo-600"></i> 교사 계정 관리</h2>
+              <button onclick="openTeacherModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">+ 교사 추가</button>
+            </div>
+            <p class="text-[11px] text-slate-500">학과부장·교사는 <b>자기 학과 학생만</b> 조회·수정·삭제·통계 확인이 가능합니다. 전체 관리자는 모든 학과를 볼 수 있습니다.</p>
+            <div id="teacherAccountList" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- MODALS -->
+  <div id="genericModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+    <div id="gmBox" class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4 border border-slate-200 my-6">
+      <div class="flex items-center justify-between"><h3 id="gmTitle" class="text-base font-bold text-slate-900"></h3><button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button></div>
+      <div id="gmBody" class="text-xs space-y-3"></div>
+      <p id="gmError" class="text-xs text-rose-600 font-semibold hidden whitespace-pre-line"></p>
+      <div class="flex gap-2 pt-1">
+        <button onclick="closeModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 rounded-xl">닫기</button>
+        <button id="gmOk" onclick="modalOk()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 rounded-xl shadow disabled:opacity-50">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="printableQrModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-start justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-5 border border-slate-200 my-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div><h2 class="text-xl font-bold text-slate-900">🏫 현장 부착용 QR 코드 시트</h2><p class="text-xs text-slate-500">한 번 인쇄해서 교실 정면 / 교무실 입구에 붙여두면 계속 사용합니다.</p></div>
+        <div class="flex items-center gap-2">
+          <select id="qrDeptSelect" onchange="renderPrintableQr()" class="border border-slate-300 rounded-lg px-2 py-2 text-xs"></select>
+          <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow">🖨️ 인쇄</button>
+          <button onclick="hideModal('printableQrModal')" class="text-slate-400 hover:text-slate-700 text-sm font-bold px-2">✕</button>
+        </div>
+      </div>
+      <div id="qrUrlWarning" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900"></div>
+      <div id="printable-qr-section" class="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
+        <div class="border-2 border-indigo-500 rounded-3xl p-6 bg-indigo-50/30 flex flex-col items-center space-y-3">
+          <span class="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">0교시 · 방과후 공용</span>
+          <h3 class="font-extrabold text-xl text-indigo-950">[교실 부착용] 참석 QR</h3>
+          <p class="text-sm font-bold text-indigo-700 qr-dept-label"></p>
+          <div id="printableClassroomQr" class="bg-white p-4 rounded-2xl shadow border border-slate-200 flex items-center justify-center min-h-[200px] min-w-[200px]"></div>
+          <p class="text-xs text-slate-600 leading-relaxed font-medium" id="printableClassroomDesc"></p>
+          <a id="testLinkAttend" target="_blank" class="text-[10px] text-indigo-500 underline no-print">이 QR 링크 열어보기</a>
+        </div>
+        <div class="border-2 border-amber-500 rounded-3xl p-6 bg-amber-50/30 flex flex-col items-center space-y-3">
+          <span class="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">담당교사 확인 전용</span>
+          <h3 class="font-extrabold text-xl text-amber-950">[교무실 부착용] 불참 QR</h3>
+          <p class="text-sm font-bold text-amber-700 qr-dept-label"></p>
+          <div id="printableOfficeQr" class="bg-white p-4 rounded-2xl shadow border border-slate-200 flex items-center justify-center min-h-[200px] min-w-[200px]"></div>
+          <p class="text-xs text-slate-600 leading-relaxed font-medium">교무실 방문 면담 후 휴대폰 카메라로 스캔<br><b>학번 + PIN + 사유 입력</b></p>
+          <a id="testLinkAbsent" target="_blank" class="text-[10px] text-amber-600 underline no-print">이 QR 링크 열어보기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 테스트 모드 시연 패널 -->
+  <div id="demoPanel" class="hidden fixed bottom-3 right-3 z-40 text-xs no-print">
+    <details class="bg-slate-900 text-white rounded-xl shadow-2xl border border-rose-500">
+      <summary class="cursor-pointer px-3 py-2 font-bold select-none">🧪 시연 설정 (테스트 모드)</summary>
+      <div class="p-3 pt-0 space-y-2 w-60">
+        <div><label class="block text-slate-400 mb-0.5">GPS 위치</label>
+          <select id="gpsSimSelect" onchange="measureDistance()" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-emerald-400 font-mono">
+            <option value="inside">🏫 교내 (120m)</option><option value="outside">❌ 교외 (1.2km)</option><option value="real">🌐 실제 GPS</option>
+          </select></div>
+        <div><label class="block text-slate-400 mb-0.5">날짜 (비우면 오늘)</label><input type="date" id="simDate" onchange="onSimChange()" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 font-mono"></div>
+        <div><label class="block text-slate-400 mb-0.5">시각 (비우면 현재)</label><input type="time" id="simTime" onchange="onSimChange()" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 font-mono"></div>
+        <button onclick="simDate.value='';simTime.value='';onSimChange()" class="w-full bg-slate-700 hover:bg-slate-600 rounded py-1">실제 날짜/시각으로</button>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    // ===================================================================
+    // ★ 여기에 Apps Script 웹 앱 주소를 붙여넣으세요 (…/exec 로 끝나는 주소)
+    // ===================================================================
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyYkhorEJTccPXT7U1GoFJDlPTSZoEK8rWMwh0P7uikGslj4zs1SuVvVdW0DfR-Khzi/exec';
+
+    // ===================================================================
+    // CONSTANTS & STATE
+    // ===================================================================
+    const TOKEN_KEY = 'yuhan_att_token';
+    const DEPTS = [{ code: 'SC', name: '스마트제어과' }, { code: 'AS', name: '자동화시스템과' }, { code: 'AD', name: '건축디자인과' }, { code: 'RE', name: '로봇전기과' }];
+    const DEPT_NAMES = DEPTS.map(d => d.name);
+    const deptByCode = c => DEPTS.find(d => d.code === c);
+    const codeOf = name => (DEPTS.find(d => d.name === name) || {}).code;
+    const SESSION_LABEL = { zero: '0교시', after: '방과후' };
+    const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+
+    const state = {
+      me: null, role: null, students: [], attendance: {}, globalNotices: [], deptNotices: [], tasks: [], memos: [], academicEvents: [], jobs: [], users: [],
+      zeroCfg: {}, afterCfg: { days: {} }, activeDates: { zero: [], after: [] }, lockedDates: { zero: [], after: [] },
+      schoolLocation: { lat: 0, lng: 0, radius: 500, name: '유한공업고등학교' }, siteUrl: '', testMode: false,
+      currentDist: null, calYear: 0, calMonth: 0, calSession: 'zero', adminDept: 'ALL', activeTab: 'attendance', stripHidden: false, liveSession: null, liveAt: ''
+    };
+    let token = null, qrParams = null;
+
+    // ===================================================================
+    // HELPERS
+    // ===================================================================
+    const $ = id => document.getElementById(id);
+    const pad = n => String(n).padStart(2, '0');
+    const kstNow = () => {
+      const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+        .formatToParts(new Date()).forEach(x => p[x.type] = x.value);
+      return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}`, sec: `${p.hour}:${p.minute}:${p.second}` };
+    };
+    const todayStr = () => (state.testMode && $('simDate').value) || kstNow().date;
+    const nowHM = () => (state.testMode && $('simTime').value) || kstNow().time;
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const fromMin = n => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
+    const parseDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+    const dow = s => parseDate(s).getDay();
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function showModal(id) { $(id).classList.remove('hidden'); }
+    function hideModal(id) { $(id).classList.add('hidden'); }
+    function icons() { if (window.lucide) lucide.createIcons(); }
+    function dday(d) { const diff = Math.round((parseDate(d) - parseDate(todayStr())) / 86400000); return diff === 0 ? 'D-DAY' : diff > 0 ? `D-${diff}` : `D+${-diff}`; }
+    function downloadCSV(filename, rows) {
+      const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })); a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    const store = {
+      get() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } },
+      set(v) { try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+    };
+
+    // ===================================================================
+    // API
+    // ===================================================================
+    let loadingCount = 0;
+    function setLoading(on) { loadingCount += on ? 1 : -1; $('loading').classList.toggle('hidden', loadingCount <= 0); }
+    async function api(action, data = {}, opts = {}) {
+      if (!opts.silent) setLoading(true);
+      try {
+        for (let i = 0; ; i++) {
+          let j;
+          try {
+            const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, data, token }) });
+            j = await r.json();
+          } catch (e) {
+            if (i < 2) { await sleep(1000 * (i + 1)); continue; }
+            throw new Error('서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.');
+          }
+          if (j.ok) return j.data;
+          if (j.error === 'SESSION_EXPIRED') { sessionExpired(); throw new Error('로그인이 만료되었습니다. 다시 로그인해주세요.'); }
+          if (/동시 접속|simultaneous|Service invoked too many/i.test(j.error) && i < 3) { await sleep(1200 * (i + 1)); continue; }
+          throw new Error(j.error);
+        }
+      } finally { if (!opts.silent) setLoading(false); }
+    }
+    // 변경 요청 → 성공하면 전체 새로고침
+    async function act(action, data, okMsg) {
+      try { const r = await api(action, data); await refresh(); if (okMsg) alert(okMsg); return r === undefined ? true : r; }
+      catch (e) { alert(e.message); return false; }
+    }
+    function sessionExpired() { token = null; store.set(null); if (!$('appScreen').classList.contains('hidden')) showScreen('login'); }
+
+    function applyConfig(c) {
+      state.zeroCfg = c.zeroCfg; state.afterCfg = c.afterCfg; state.activeDates = c.activeDates; state.lockedDates = c.lockedDates;
+      state.schoolLocation = c.schoolLocation; state.testMode = !!c.testMode;
+      if (c.siteUrl !== undefined) state.siteUrl = c.siteUrl;
+      $('demoPanel').classList.toggle('hidden', !state.testMode);
+    }
+    async function refresh() {
+      const d = await api('bootstrap');
+      applyConfig(d.config);
+      state.me = d.me; state.role = d.role; state.students = d.students;
+      state.attendance = {};
+      d.attendance.forEach(addAtt);
+      state.globalNotices = d.globalNotices; state.deptNotices = d.deptNotices; state.tasks = d.tasks; state.memos = d.memos;
+      state.academicEvents = d.events; state.jobs = d.jobs; state.users = d.users;
+      state.liveAt = kstNow().time;
+      if (!state.calYear) { const t = parseDate(todayStr()); state.calYear = t.getFullYear(); state.calMonth = t.getMonth() + 1; }
+      renderApp();
+    }
+    function addAtt(r) {
+      ((state.attendance[r.date] = state.attendance[r.date] || {})[r.session] = state.attendance[r.date][r.session] || {})[r.sid] = r;
+    }
+
+    // ===================================================================
+    // AUTH / ROLES
+    // ===================================================================
+    const me = () => state.me;
+    const role = () => state.role;
+    const isStaff = () => role() === 'admin' || role() === 'teacher';
+    function scopeDept() { return role() === 'admin' ? (state.adminDept === 'ALL' ? null : state.adminDept) : me().dept; }
+    function visibleStudents(includePending = false) {
+      if (role() === 'student') return [me()];
+      const d = scopeDept();
+      return state.students.filter(s => (includePending || s.status === 'approved') && (!d || s.dept === d));
+    }
+    const canManage = s => role() === 'admin' || (role() === 'teacher' && s.dept === me().dept);
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const err = m => { $('loginError').innerText = m; $('loginError').classList.remove('hidden'); };
+      try {
+        const r = await api('login', { id: $('loginEmail').value.trim(), pw: $('loginPw').value });
+        token = r.token; store.set(token);
+        $('loginPw').value = ''; $('loginError').classList.add('hidden');
+        state.adminDept = 'ALL'; state.activeTab = 'attendance'; state.stripHidden = false;
+        await refresh(); showScreen('app');
+        if (r.initialPw) { alert('🔐 초기 비밀번호를 사용 중입니다. 다음 창에서 바로 변경해주세요.'); openMyPwModal(); }
+        else if (role() === 'student' && me().initialCred) { alert('🔐 처음 비밀번호/PIN(학번)을 쓰고 있어요. [내 정보]에서 꼭 바꿔주세요.'); setActiveTab('students'); }
+      } catch (ex) { err(ex.message); }
+    }
+    async function logout() {
+      try { await api('logout', {}, { silent: true }); } catch (e) {}
+      token = null; store.set(null); showScreen('login');
+    }
+
+    // ===================================================================
+    // SCREENS & BOOT
+    // ===================================================================
+    function showScreen(name) {
+      ['config', 'login', 'signup', 'quick', 'app'].forEach(n => $(n + 'Screen').classList.toggle('hidden', n !== name));
+      window.scrollTo(0, 0); icons();
+    }
+    window.onload = async function () {
+      icons();
+      if (!/^https:\/\/script\.google\.com\//.test(API_URL)) return showScreen('config');
+      setupMemoPaste(); startLiveClock();
+      try { applyConfig(await api('publicInfo')); }
+      catch (e) { $('configMsg').innerText = '서버 연결 실패: ' + e.message + '\n\nApps Script 배포 설정(액세스: 모든 사용자)과 API_URL을 확인하세요.'; return showScreen('config'); }
+      const p = new URLSearchParams(location.search);
+      if (p.get('qr')) { qrParams = { type: p.get('qr') === 'absent' ? 'absent' : 'attend', dept: p.get('d') || '' }; return openQuickScreen(); }
+      token = store.get();
+      if (token) { try { await refresh(); return showScreen('app'); } catch (e) { token = null; store.set(null); } }
+      showScreen('login');
+    };
+    function startLiveClock() {
+      setInterval(() => { const el = $('liveClockText'); if (el) el.innerText = state.testMode && $('simTime').value ? `${$('simTime').value} (시연)` : kstNow().sec; }, 1000);
+      // 실시간 현황판 30초 자동 새로고침
+      setInterval(() => { if (token && isStaff() && state.activeTab === 'attendance' && !$('appScreen').classList.contains('hidden') && document.visibilityState === 'visible') refreshLive(false); }, 30000);
+    }
+    function onSimChange() {
+      if (!$('appScreen').classList.contains('hidden') && state.me) renderApp();
+      if (!$('quickScreen').classList.contains('hidden')) updateQuickSession();
+    }
+
+    // ===================================================================
+    // GPS
+    // ===================================================================
+    function getPosition() {
+      return new Promise(resolve => {
+        if (state.testMode && $('gpsSimSelect').value !== 'real') return resolve({ simDist: $('gpsSimSelect').value === 'inside' ? 120 : 1200 });
+        if (!navigator.geolocation) return resolve({ error: '이 브라우저는 위치 정보를 지원하지 않습니다.' });
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
+          err => resolve({ error: err.code === 1 ? '위치 권한이 거부되었습니다. 브라우저 설정에서 이 사이트의 위치 접근을 허용해주세요.' : '위치를 가져오지 못했습니다. 휴대폰 GPS(위치)를 켜주세요.' }),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      });
+    }
+    function calcHaversine(lat1, lon1, lat2, lon2) {
+      const R = 6371e3, rad = Math.PI / 180;
+      const a = Math.sin((lat2 - lat1) * rad / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon1) * rad / 2) ** 2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+    const radius = () => Number(state.schoolLocation.radius) || 500;
+    async function measureDistance() {
+      const p = await getPosition();
+      state.currentDist = p.error ? NaN : p.simDist != null ? p.simDist : calcHaversine(p.lat, p.lng, state.schoolLocation.lat, state.schoolLocation.lng);
+      state.gpsError = p.error || '';
+      renderGpsBadge();
+      return p;
+    }
+    function scanPayload(p) {
+      const d = {};
+      if (p.lat != null) { d.lat = p.lat; d.lng = p.lng; d.acc = p.acc; }
+      if (state.testMode) d.sim = { date: $('simDate').value, time: $('simTime').value, dist: p.simDist };
+      return d;
+    }
+    function renderGpsBadge() {
+      const d = state.currentDist, measured = d !== null, ok = measured && d <= radius();
+      const txt = !measured ? '미측정' : isNaN(d) ? '측정 실패' : ok ? `학교와의 거리 ${d.toLocaleString()}m (인증 가능)` : `${d.toLocaleString()}m (${radius()}m 밖 — 출석 불가)`;
+      const cls = !measured ? 'bg-slate-100 text-slate-500 border-slate-200' : ok ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300';
+      $('gpsDistanceBadge').className = `text-xs px-2.5 py-0.5 rounded-full font-bold border ${cls}`; $('gpsDistanceBadge').innerText = txt;
+      $('gpsStatusIconBg').className = `w-10 h-10 rounded-xl flex items-center justify-center ${!measured ? 'bg-slate-100 text-slate-500' : ok ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`;
+      const s = state.schoolLocation;
+      $('gpsCoordText').innerText = `학교 기준 좌표: ${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)} (유한공업고등학교, 서울 구로구 경인로 8) · 허용 반경 ${radius()}m`;
+      const qk = $('qkGps');
+      qk.className = `text-xs rounded-xl p-2.5 border text-center font-semibold ${cls}`;
+      qk.innerText = !measured ? '📍 GPS 확인 중...' : isNaN(d) ? `📍 ${state.gpsError}` : ok ? `📍 학교와의 거리 ${d.toLocaleString()}m — 인증 가능` : `📍 ${d.toLocaleString()}m — 학교 ${radius()}m 밖이라 출석할 수 없습니다`;
+    }
+    async function recheckLocation() {
+      await measureDistance();
+      if (isNaN(state.currentDist)) alert(state.gpsError);
+    }
+
+    // ===================================================================
+    // SCHEDULE HELPERS
+    // ===================================================================
+    function getWindow(session, date) {
+      if (session === 'zero') { const z = state.zeroCfg; return { inStart: z.inStart, inEnd: z.inEnd, lateUntil: z.lateUntil, twoScan: false, label: `${z.inStart}~${z.inEnd}` }; }
+      const a = state.afterCfg, d = a.days[dow(date)];
+      if (!d || !d.start || !d.end) return null;
+      const s = toMin(d.start), e = toMin(d.end);
+      return { inStart: fromMin(s - a.earlyMin), inEnd: d.start, lateUntil: fromMin(s + a.lateMin), outStart: fromMin(e - a.outBeforeMin), outEnd: fromMin(e + a.outAfterMin), twoScan: true, label: `${d.start}~${d.end} (${d.periods})` };
+    }
+    const guessSession = () => toMin(nowHM()) < 12 * 60 ? 'zero' : 'after';
+    const getRec = (date, ss, sid) => (state.attendance[date] && state.attendance[date][ss] && state.attendance[date][ss][sid]) || null;
+    function calcStats(sid, period = 'month', session = 'all') {
+      const today = todayStr(), prefix = period === 'month' ? today.slice(0, 7) : period === 'year' ? today.slice(0, 4) : '';
+      let normal = 0, tardy = 0, excused = 0, unexcused = 0, counted = 0;
+      (session === 'all' ? ['zero', 'after'] : [session]).forEach(ss => {
+        state.activeDates[ss].filter(d => d <= today && d.startsWith(prefix)).forEach(d => {
+          const r = getRec(d, ss, sid);
+          if (!r) { if (d < today || state.lockedDates[ss].includes(d)) { unexcused++; counted++; } return; }
+          counted++;
+          if (r.status === '정상출석') normal++; else if (r.status === '지각') tardy++; else if (r.status === '사유불참') excused++; else if (r.status === '무단불참') unexcused++;
+        });
+      });
+      const denom = counted - excused, rate = denom > 0 ? (normal + tardy) / denom * 100 : null;
+      return { total: counted, normal, tardy, excused, unexcused, rate, bonus: Math.max(0, (rate !== null && rate >= 90 ? 15 : 0) - tardy - unexcused * 3) };
+    }
+    const fmtRate = r => r === null ? '-' : `${r.toFixed(1)}%`;
+    function statusPill(st) {
+      const map = { '정상출석': 'bg-emerald-100 text-emerald-700', '지각': 'bg-amber-100 text-amber-700', '사유불참': 'bg-blue-100 text-blue-700', '무단불참': 'bg-rose-100 text-rose-700', '입실완료': 'bg-indigo-100 text-indigo-700', '미등록': 'bg-slate-100 text-slate-500' };
+      return `<span class="px-2 py-0.5 rounded-full font-bold whitespace-nowrap ${map[st] || 'bg-slate-100 text-slate-600'}">${esc(st)}</span>`;
+    }
+
+    // ===================================================================
+    // QUICK QR SCREEN
+    // ===================================================================
+    function openQuickScreen() {
+      const dept = deptByCode(qrParams.dept), absent = qrParams.type === 'absent';
+      $('qkBadge').className = `inline-block font-bold text-[11px] px-3 py-1 rounded-full ${absent ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`;
+      $('qkBadge').innerText = absent ? '교무실 불참 QR' : '교실 참석 QR';
+      $('qkTitle').innerText = absent ? '사유 불참 등록' : 'QR 간편 출석';
+      $('qkDept').innerText = `유한공업고등학교 ${dept ? dept.name + ' ' : ''}전공심화반`;
+      $('qkAbsentBox').classList.toggle('hidden', !absent);
+      $('qkSubmit').innerText = absent ? '불참 사유 제출' : '출석 인증하기';
+      $('qkSubmit').className = `w-full ${absent ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold py-3.5 rounded-xl shadow text-sm disabled:opacity-50`;
+      resetQuickCheck(); showScreen('quick'); measureDistance();
+    }
+    function updateQuickSession() {
+      const ss = guessSession(); $('qkSession').value = ss;
+      const win = getWindow(ss, todayStr());
+      $('qkSessionHint').innerText = win ? `현재 ${nowHM()} 기준 자동 선택 · 오늘 ${SESSION_LABEL[ss]} ${win.label}` : `오늘은 ${SESSION_LABEL[ss]} 시간표가 없습니다.`;
+    }
+    function resetQuickCheck() { $('qkForm').classList.remove('hidden'); $('qkResult').classList.add('hidden'); $('qkPin').value = ''; $('qkAbsentDetail').value = ''; updateQuickSession(); }
+    async function submitQuickCheck() {
+      const sid = $('qkId').value.trim(), pin = $('qkPin').value.trim();
+      if (!/^\d{4,5}$/.test(sid) || !/^\d{4}$/.test(pin)) return alert('학번(4자리)과 PIN 4자리를 입력하세요.');
+      let reason = '';
+      if (qrParams.type === 'absent') { const det = $('qkAbsentDetail').value.trim(); if (!det) return alert('상세 사유를 입력하세요.'); reason = `${$('qkAbsentCat').value} - ${det}`; }
+      const show = (ok, msg) => { $('qkForm').classList.add('hidden'); $('qkResult').classList.remove('hidden'); $('qkResultIcon').innerText = ok ? '✅' : '⛔'; $('qkResultMsg').innerText = msg; };
+      $('qkSubmit').disabled = true;
+      try {
+        const p = await measureDistance();
+        if (p.error) return show(false, '📍 ' + p.error);
+        const r = await api('scan', Object.assign({ sid, pin, type: qrParams.type, session: $('qkSession').value, qrDept: qrParams.dept, reason }, scanPayload(p)));
+        show(r.ok, r.msg);
+      } catch (e) { show(false, e.message); }
+      finally { $('qkSubmit').disabled = false; }
+    }
+
+    // ===================================================================
+    // STUDENT FORM (회원가입 / 교사 추가)
+    // ===================================================================
+    function studentFieldsHtml(p, o = {}) {
+      return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div><label class="lbl">학번 * <span class="font-normal text-slate-400">(학년·반·번호 4자리, 예: 3104)</span></label><input id="${p}Id" inputmode="numeric" maxlength="5" class="inp font-mono" placeholder="3104"></div>
+        <div><label class="lbl">이름 *</label><input id="${p}Name" class="inp"></div>
+        <div><label class="lbl">학과 *</label><select id="${p}Dept" class="inp" ${o.lockDept ? 'disabled' : ''}>${DEPT_NAMES.map(d => `<option ${d === o.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">학년 *</label><select id="${p}Grade" class="inp"><option>1</option><option>2</option><option selected>3</option></select></div>
+        <div><label class="lbl">연락처 ${o.optional ? '' : '*'}</label><input id="${p}Phone" inputmode="tel" class="inp font-mono" placeholder="010-0000-0000"></div>
+        <div><label class="lbl">구글 이메일 ${o.optional ? '' : '*'}</label><input id="${p}Email" type="email" class="inp" placeholder="example@gmail.com"></div>
+        ${o.password ? `<div><label class="lbl">비밀번호 * <span class="font-normal text-slate-400">(8자 이상)</span></label><input id="${p}Pw" type="password" class="inp"></div>
+        <div><label class="lbl">비밀번호 확인 *</label><input id="${p}Pw2" type="password" class="inp"></div>` : ''}
+        <div><label class="lbl">QR 출석 PIN * <span class="font-normal text-slate-400">(숫자 4자리)</span></label><input id="${p}Pin" type="password" inputmode="numeric" maxlength="4" class="inp font-mono tracking-widest"></div>
+        <div><label class="lbl">목표 기업</label><input id="${p}Company" class="inp"></div>
+        <div class="sm:col-span-2"><label class="lbl">보유 자격증 <span class="font-normal text-slate-400">(쉼표로 구분)</span></label><input id="${p}Certs" class="inp"></div>
+      </div>`;
+    }
+    function readStudentFields(p) {
+      const v = id => ($(p + id) ? $(p + id).value.trim() : '');
+      return { id: v('Id'), name: v('Name'), dept: v('Dept'), grade: v('Grade'), phone: v('Phone'), email: v('Email'), pw: $(p + 'Pw') ? $(p + 'Pw').value : '', pw2: $(p + 'Pw2') ? $(p + 'Pw2').value : '', pin: v('Pin'), company: v('Company'), certs: v('Certs') };
+    }
+    function showSignup() { $('signupFields').innerHTML = studentFieldsHtml('su', { password: true }); $('signupAgree').checked = false; $('signupError').classList.add('hidden'); showScreen('signup'); }
+    async function submitSignup() {
+      const err = m => { $('signupError').innerText = m; $('signupError').classList.remove('hidden'); };
+      const d = readStudentFields('su');
+      if (d.pw !== d.pw2) return err('비밀번호 확인이 일치하지 않습니다.');
+      if (!$('signupAgree').checked) return err('개인정보 수집·이용에 동의해주세요.');
+      try {
+        const r = await api('signup', d);
+        alert(`✅ 가입 신청 완료!\n${r.dept} 선생님이 승인하면 ${r.email} 로 로그인할 수 있습니다.`);
+        showScreen('login'); $('loginEmail').value = r.email;
+      } catch (e) { err(e.message); }
+    }
+
+    // ===================================================================
+    // MODAL
+    // ===================================================================
+    let modalHandler = null;
+    function openModal(title, body, o = {}) {
+      $('gmTitle').innerText = title; $('gmBody').innerHTML = body; $('gmError').classList.add('hidden');
+      $('gmOk').innerText = o.okText || '저장'; $('gmOk').classList.toggle('hidden', !o.onOk);
+      $('gmBox').className = `bg-white rounded-3xl w-full ${o.wide ? 'max-w-2xl' : 'max-w-md'} p-6 shadow-2xl space-y-4 border border-slate-200 my-6`;
+      modalHandler = o.onOk || null; showModal('genericModal'); icons();
+    }
+    function closeModal() { hideModal('genericModal'); modalHandler = null; }
+    function modalErr(m) { $('gmError').innerText = m; $('gmError').classList.remove('hidden'); return false; }
+    async function modalOk() {
+      if (!modalHandler) return closeModal();
+      $('gmOk').disabled = true;
+      try { const r = await modalHandler(); if (r !== false) closeModal(); }
+      catch (e) { modalErr(e.message); }
+      finally { $('gmOk').disabled = false; }
+    }
+    // 모달 안에서 API 호출 후 새로고침
+    async function modalAct(action, data, okMsg) { await api(action, data); closeModal(); await refresh(); if (okMsg) alert(okMsg); return true; }
+
+    // ===================================================================
+    // RENDER APP
+    // ===================================================================
+    function renderApp() {
+      if (!state.me) return;
+      const r = role(), u = me();
+      $('adminDeptBox').classList.toggle('hidden', r !== 'admin');
+      if (r === 'admin') { $('adminDeptSelect').innerHTML = `<option value="ALL">전체 학과</option>` + DEPT_NAMES.map(d => `<option>${d}</option>`).join(''); $('adminDeptSelect').value = state.adminDept; }
+      const badge = r === 'admin' ? ['bg-rose-500', '전체 관리자'] : r === 'teacher' ? ['bg-indigo-500', `${u.dept} ${u.position}`] : ['bg-emerald-500', `${u.dept} 학생`];
+      $('userChip').innerHTML = `<span class="${badge[0]} text-white px-2 py-0.5 rounded font-bold text-[11px]">${esc(badge[1])}</span><span class="font-semibold">${esc(u.name)}</span>`;
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('hidden', !b.dataset.roles.split(',').includes(r)));
+      $('tabStudentsLabel').innerText = r === 'student' ? '내 정보' : '학생 명단 (엑셀 그리드)';
+      if ($('tab-' + state.activeTab).classList.contains('hidden')) state.activeTab = 'attendance';
+      setActiveTab(state.activeTab, true);
+      renderNoticeStrip(); renderGlobalNotices(); renderGpsBadge(); renderAttendance(); renderStudentsTab();
+      renderTasks(); renderRoadmap(); renderDeptNotices(); renderMemos(); renderAcademic(); renderNcs(); renderJobs();
+      if (r === 'admin') renderAdmin();
+      icons();
+    }
+    function setActiveTab(tabId, silent) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(el => { const on = el.id === `tab-${tabId}`; el.classList.toggle('border-indigo-500', on); el.classList.toggle('text-white', on); el.classList.toggle('font-semibold', on); el.classList.toggle('border-transparent', !on); });
+      $(`sec-${tabId}`).classList.remove('hidden');
+      if (!silent) window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function goHome() { closeModal(); hideModal('printableQrModal'); state.stripHidden = false; if (role() === 'admin') state.adminDept = 'ALL'; state.activeTab = 'attendance'; renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    // ---- 공지 ----
+    const byNewest = (a, b) => String(b.date).localeCompare(String(a.date)) || Number(b.id) - Number(a.id);
+    function visibleDeptNotices() { const d = scopeDept(); return state.deptNotices.filter(n => !d || n.dept === d).sort(byNewest); }
+    function renderNoticeStrip() {
+      const box = $('noticeStrip');
+      const test = state.testMode ? `<div class="bg-rose-600 text-white rounded-xl p-2.5 text-xs font-bold text-center">🧪 테스트 모드 켜짐 — 가짜 위치·시각으로 출석할 수 있는 상태입니다. 실제 운영 전 [관리자 설정]에서 끄세요.</div>` : '';
+      if (state.stripHidden) { box.innerHTML = test; return; }
+      const items = [...[...state.globalNotices].sort(byNewest).slice(0, 1).map(n => ({ ...n, kind: 'global' })), ...visibleDeptNotices().slice(0, 1).map(n => ({ ...n, kind: 'dept' }))];
+      box.innerHTML = test + items.map((n, i) => `<div class="${n.kind === 'global' ? 'bg-indigo-50 border-indigo-200' : 'bg-emerald-50 border-emerald-200'} border rounded-xl p-3 flex items-start justify-between gap-3 shadow-sm">
+        <button onclick="setActiveTab('${n.kind === 'global' ? 'attendance' : 'notices'}')" class="flex items-start gap-3 text-left flex-1 min-w-0">
+          <span class="${n.kind === 'global' ? 'bg-indigo-600' : 'bg-emerald-600'} text-white text-xs px-2.5 py-1 rounded-md font-bold whitespace-nowrap">${n.kind === 'global' ? '전체 공지' : esc(n.dept) + ' 공지'}</span>
+          <p class="text-sm text-slate-800 min-w-0"><b>${esc(n.title)}</b> <span class="text-slate-600">— ${esc(n.content)}</span></p></button>
+        ${i === 0 ? `<button onclick="state.stripHidden=true;renderNoticeStrip()" class="text-slate-400 hover:text-slate-700 text-xs font-semibold whitespace-nowrap">닫기 ✕</button>` : ''}</div>`).join('');
+    }
+    function noticeCard(n, canDel, delAction, color) {
+      return `<div class="border border-slate-200 rounded-xl p-3 text-xs">
+        <div class="flex items-center justify-between gap-2"><p class="font-bold text-slate-900">${n.dept ? `<span class="text-${color}-600">[${esc(n.dept)}]</span> ` : ''}${esc(n.title)}</p>
+        <div class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><span class="font-mono">${esc(n.date)}</span><span>${esc(n.author || '')}</span>
+        ${canDel ? `<button onclick="if(confirm('이 공지를 삭제할까요?')) act('${delAction}',{id:'${esc(n.id)}'})" class="text-rose-500 hover:text-rose-700">삭제</button>` : ''}</div></div>
+        <p class="text-slate-700 mt-1 whitespace-pre-line leading-relaxed">${esc(n.content)}</p></div>`;
+    }
+    function renderGlobalNotices() {
+      const admin = role() === 'admin'; $('btnAddGlobalNotice').classList.toggle('hidden', !admin);
+      const list = [...state.globalNotices].sort(byNewest);
+      $('globalNoticeList').innerHTML = list.length ? list.map(n => noticeCard(n, admin, 'deleteGlobalNotice', 'indigo')).join('') : '<p class="text-xs text-slate-400">등록된 전체 공지가 없습니다.</p>';
+    }
+    function openGlobalNoticeModal() {
+      openModal('📢 전체 공지 작성 (모든 학과)', `<div><label class="lbl">제목</label><input id="gnTitle" class="inp"></div><div><label class="lbl">내용</label><textarea id="gnContent" rows="4" class="inp"></textarea></div>`,
+        { okText: '공지 등록', onOk: () => { state.stripHidden = false; return modalAct('addGlobalNotice', { title: $('gnTitle').value, content: $('gnContent').value }); } });
+    }
+    function renderDeptNotices() {
+      const d = scopeDept(); $('deptNoticeScope').innerText = d ? `(${d})` : '(전체 학과)';
+      $('btnAddDeptNotice').classList.toggle('hidden', !isStaff());
+      const list = visibleDeptNotices();
+      $('deptNoticeList').innerHTML = list.length ? list.map(n => noticeCard(n, canManage(n), 'deleteDeptNotice', 'emerald')).join('') : '<p class="text-xs text-slate-400">등록된 학과 공지가 없습니다.</p>';
+      $('memoCard').classList.toggle('hidden', !isStaff());
+    }
+    function openDeptNoticeModal() {
+      const t = role() === 'teacher', pre = t ? me().dept : scopeDept();
+      openModal('📌 학과 공지 작성', `<div><label class="lbl">대상 학과</label><select id="dnDept" class="inp" ${t ? 'disabled' : ''}>${DEPT_NAMES.map(d => `<option ${d === pre ? 'selected' : ''}>${d}</option>`).join('')}</select>
+        <p class="text-[11px] text-slate-400 mt-1">해당 학과 학생·선생님과 전체 관리자만 볼 수 있습니다.</p></div>
+        <div><label class="lbl">제목</label><input id="dnTitle" class="inp"></div><div><label class="lbl">내용</label><textarea id="dnContent" rows="4" class="inp"></textarea></div>`,
+        { okText: '공지 등록', onOk: () => { state.stripHidden = false; return modalAct('addDeptNotice', { dept: $('dnDept').value, title: $('dnTitle').value, content: $('dnContent').value }); } });
+    }
+
+    // ---- 출결 탭 ----
+    function renderAttendance() {
+      const staff = isStaff();
+      $('teacherAttView').classList.toggle('hidden', !staff); $('studentAttView').classList.toggle('hidden', staff);
+      $('liveBoardCard').classList.toggle('hidden', !staff); $('btnGoAdminGps').classList.toggle('hidden', role() !== 'admin');
+      if (staff) { renderLiveBoard(); renderTimeConfig(); renderCalendar(); renderTeacherAttTable(); } else renderStudentAtt();
+    }
+
+    // ---- 실시간 현황판 ----
+    async function refreshLive(manual) {
+      try {
+        const r = await api('today', { date: todayStr() }, { silent: !manual });
+        state.attendance[r.date] = {}; r.rows.forEach(addAtt);
+        state.liveAt = r.now.time + (r.now.time.length === 5 ? '' : ''); renderLiveBoard(); renderTeacherAttTable();
+      } catch (e) { if (manual) alert(e.message); }
+    }
+    function renderLiveBoard() {
+      const date = todayStr(), ss = state.liveSession || guessSession();
+      ['Zero', 'After'].forEach(k => $('liveBtn' + k).className = `px-3 py-1 rounded-md ${ss === k.toLowerCase() ? 'bg-white shadow text-indigo-700' : 'text-slate-500'}`);
+      $('liveScope').innerText = `${scopeDept() || '전체 학과'} · ${date} (${WEEK[dow(date)]})`;
+      $('liveUpdated').innerText = state.liveAt ? `${state.liveAt} 갱신 · 30초 자동` : '';
+      const list = visibleStudents(), active = state.activeDates[ss].includes(date), win = getWindow(ss, date);
+      if (!active || !win) { $('liveCounts').innerHTML = ''; $('liveGrid').innerHTML = `<p class="col-span-full text-xs text-slate-400 py-4 text-center">오늘은 ${SESSION_LABEL[ss]} 운영일이 아닙니다. (아래 달력에서 운영일을 지정하세요)</p>`; return; }
+      const c = { '정상출석': 0, '지각': 0, '사유불참': 0, '무단불참': 0, '미등록': 0 };
+      const tiles = list.map(s => {
+        const r = getRec(date, ss, s.id), st = r ? r.status : '미등록'; c[st] = (c[st] || 0) + 1;
+        const color = { '정상출석': 'border-emerald-300 bg-emerald-50', '지각': 'border-amber-300 bg-amber-50', '사유불참': 'border-blue-300 bg-blue-50', '무단불참': 'border-rose-300 bg-rose-50', '미등록': 'border-slate-200 bg-white' }[st];
+        const icon = { '정상출석': '✅', '지각': '⚠️', '사유불참': '📝', '무단불참': '❌', '미등록': '⬜' }[st];
+        const time = r ? (r.in ? r.in : '') + (win.twoScan && r.in ? (r.out ? ` → ${r.out}` : ' (수업 중)') : '') : '';
+        return { st, html: `<div class="border ${color} rounded-xl p-2 text-xs" title="${esc(r && r.reason || '')}"><div class="flex items-center justify-between"><b class="truncate">${esc(s.name)}</b><span>${icon}</span></div>
+          <div class="text-[10px] text-slate-500 font-mono">${esc(s.id)} ${esc(time)}</div>${scopeDept() ? '' : `<div class="text-[10px] text-indigo-500">${esc(s.dept)}</div>`}</div>` };
+      }).sort((a, b) => (a.st === '미등록' ? -1 : 0) - (b.st === '미등록' ? -1 : 0));
+      const cnt = (label, n, cls) => `<div class="${cls} rounded-xl p-2 text-center"><p class="text-[11px] font-semibold">${label}</p><p class="text-lg font-extrabold">${n}</p></div>`;
+      $('liveCounts').innerHTML = cnt('✅ 출석', c['정상출석'], 'bg-emerald-50 text-emerald-800') + cnt('⚠️ 지각', c['지각'], 'bg-amber-50 text-amber-800') + cnt('📝 사유', c['사유불참'], 'bg-blue-50 text-blue-800') + cnt('❌ 무단', c['무단불참'], 'bg-rose-50 text-rose-800') + cnt('⬜ 미등록', c['미등록'], 'bg-slate-100 text-slate-700');
+      $('liveGrid').innerHTML = tiles.length ? tiles.map(t => t.html).join('') : '<p class="col-span-full text-xs text-slate-400">학생이 없습니다.</p>';
+    }
+
+    function renderTimeConfig() {
+      const z = state.zeroCfg, a = state.afterCfg;
+      $('cfgZeroIn').value = z.inStart; $('cfgZeroEnd').value = z.inEnd; $('cfgZeroLate').value = z.lateUntil;
+      $('afterCfgBody').innerHTML = [1, 2, 3, 4, 5].map(d => { const c = a.days[d] || { start: '', end: '', periods: '' };
+        return `<tr><td class="py-1 font-bold text-slate-700">${WEEK[d]}</td><td class="py-1 pr-1"><input type="time" id="aS${d}" value="${c.start}" class="inp font-mono !p-1.5"></td>
+          <td class="py-1 pr-1"><input type="time" id="aE${d}" value="${c.end}" class="inp font-mono !p-1.5"></td><td class="py-1"><input id="aP${d}" value="${esc(c.periods)}" class="inp !p-1.5"></td></tr>`; }).join('');
+      $('cfgEarly').value = a.earlyMin; $('cfgLate').value = a.lateMin; $('cfgOutBefore').value = a.outBeforeMin; $('cfgOutAfter').value = a.outAfterMin;
+    }
+    function saveTimeSettings() {
+      const days = {}; [1, 2, 3, 4, 5].forEach(d => days[d] = { start: $('aS' + d).value, end: $('aE' + d).value, periods: $('aP' + d).value });
+      act('saveTimeConfig', { zeroCfg: { inStart: $('cfgZeroIn').value, inEnd: $('cfgZeroEnd').value, lateUntil: $('cfgZeroLate').value },
+        afterCfg: { days, earlyMin: $('cfgEarly').value, lateMin: $('cfgLate').value, outBeforeMin: $('cfgOutBefore').value, outAfterMin: $('cfgOutAfter').value } }, '⏰ 시간 규칙이 저장되었습니다.');
+    }
+
+    function shiftCalMonth(delta) { state.calMonth += delta; if (state.calMonth < 1) { state.calMonth = 12; state.calYear--; } if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; } renderCalendar(); }
+    function renderCalendar() {
+      const ss = state.calSession, y = state.calYear, m = state.calMonth;
+      ['Zero', 'After'].forEach(k => $('calBtn' + k).className = `px-3 py-1 rounded-md ${ss === k.toLowerCase() ? 'bg-white shadow text-indigo-700' : 'text-slate-500'}`);
+      $('calMonthLabel').innerText = `${y}년 ${m}월 · ${SESSION_LABEL[ss]}`;
+      const grid = $('calendarGrid'); grid.innerHTML = '';
+      const first = new Date(y, m - 1, 1).getDay(), dim = new Date(y, m, 0).getDate(), today = todayStr();
+      for (let i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+      for (let day = 1; day <= dim; day++) {
+        const ds = `${y}-${pad(m)}-${pad(day)}`, active = state.activeDates[ss].includes(ds), locked = state.lockedDates[ss].includes(ds);
+        const af = ss === 'after' ? state.afterCfg.days[dow(ds)] : null;
+        const card = document.createElement('div');
+        card.className = `p-1.5 sm:p-2 rounded-xl border text-center text-xs cursor-pointer transition-all ${locked ? 'bg-rose-50 border-rose-200 text-rose-900' : active ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'} ${ds === today ? 'ring-2 ring-amber-400' : ''}`;
+        card.onclick = () => toggleActiveDate(ds);
+        card.innerHTML = `<div class="flex items-center justify-between"><span class="text-[11px] font-mono">${day}</span><button onclick="toggleLockDate('${ds}', event)" class="text-[10px] p-0.5 rounded hover:bg-white/60">${locked ? '🔒' : '🔓'}</button></div>
+          <div class="mt-1 text-[10px]">${locked ? '<span class="text-rose-600 font-bold">마감</span>' : active ? `<span class="text-indigo-600">${af && af.start ? af.start : SESSION_LABEL[ss]}</span>` : '미운영'}</div>`;
+        grid.appendChild(card);
+      }
+    }
+    function toggleActiveDate(ds) {
+      const ss = state.calSession;
+      if (state.lockedDates[ss].includes(ds)) return alert('🔒 마감된 날짜는 운영 여부를 바꿀 수 없습니다. 잠금을 먼저 해제하세요.');
+      const on = !state.activeDates[ss].includes(ds);
+      act('setDates', { kind: 'active', session: ss, add: on ? [ds] : [], remove: on ? [] : [ds] });
+    }
+    function toggleLockDate(ds, e) {
+      e.stopPropagation();
+      const ss = state.calSession, locked = state.lockedDates[ss].includes(ds);
+      if (!locked && !confirm(`[${ds} ${SESSION_LABEL[ss]}] 마감할까요?\n학생 등록이 차단되고, 기록 없는 학생은 무단불참으로 집계됩니다.`)) return;
+      act('setDates', { kind: 'locked', session: ss, add: locked ? [] : [ds], remove: locked ? [ds] : [] });
+    }
+    function fillMonthWeekdays() {
+      const ss = state.calSession, y = state.calYear, m = state.calMonth, dim = new Date(y, m, 0).getDate(), add = [];
+      for (let day = 1; day <= dim; day++) { const ds = `${y}-${pad(m)}-${pad(day)}`, w = dow(ds);
+        if (ss === 'zero' ? (w >= 1 && w <= 5) : !!(state.afterCfg.days[w] && state.afterCfg.days[w].start)) add.push(ds); }
+      if (!confirm(`${y}년 ${m}월 평일 ${add.length}일을 ${SESSION_LABEL[ss]} 운영일로 지정할까요?\n공휴일·시험일은 나중에 날짜를 눌러 해제하세요.`)) return;
+      act('setDates', { kind: 'active', session: ss, add });
+    }
+
+    function renderTeacherAttTable() {
+      const body = $('teacherAttTableBody'), period = $('statsPeriodSelect').value, session = $('statsSessionSelect').value, list = visibleStudents();
+      $('statsScopeLabel').innerText = scopeDept() ? `· ${scopeDept()}` : '· 전체 학과';
+      if (!list.length) { body.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400">표시할 학생이 없습니다.</td></tr>`; return; }
+      body.innerHTML = list.map(s => { const st = calcStats(s.id, period, session);
+        const rc = st.rate === null ? 'text-slate-400' : st.rate >= 90 ? 'text-emerald-600' : st.rate >= 80 ? 'text-amber-600' : 'text-rose-600';
+        return `<tr class="hover:bg-slate-50"><td class="p-3"><div class="font-bold text-slate-900">${esc(s.name)}</div><div class="text-[10px] text-slate-400 font-mono">${esc(s.id)}</div></td>
+          <td class="p-3">${esc(s.dept)}</td><td class="p-3 font-mono">${st.total}</td><td class="p-3 font-mono text-emerald-700">${st.normal}</td><td class="p-3 font-mono text-amber-700">${st.tardy}</td>
+          <td class="p-3 font-mono text-blue-700">${st.excused}</td><td class="p-3 font-mono text-rose-700">${st.unexcused}</td><td class="p-3 font-bold ${rc}">${fmtRate(st.rate)}</td>
+          <td class="p-3"><span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">+${st.bonus}점</span></td>
+          <td class="p-3">${canManage(s) ? `<button onclick="manageStudentAtt('${s.id}')" class="bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-1 rounded-md font-semibold whitespace-nowrap">기록 수정</button>` : '-'}</td></tr>`; }).join('');
+    }
+    function manageStudentAtt(sid) {
+      const s = state.students.find(x => x.id === sid);
+      openModal(`✏️ ${s.name} (${s.id}) 출결 수정`, `<div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">날짜</label><input type="date" id="maDate" value="${todayStr()}" class="inp" onchange="maLoad('${sid}')"></div>
+        <div><label class="lbl">구분</label><select id="maSession" class="inp" onchange="maLoad('${sid}')"><option value="zero">0교시</option><option value="after">방과후</option></select></div>
+        <div><label class="lbl">상태</label><select id="maStatus" class="inp"><option value="">(기록 삭제)</option><option>정상출석</option><option>지각</option><option>사유불참</option><option>무단불참</option></select></div>
+        <div><label class="lbl">입실 / 퇴실</label><div class="flex gap-1"><input type="time" id="maIn" class="inp font-mono !p-1.5"><input type="time" id="maOut" class="inp font-mono !p-1.5"></div></div>
+        <div class="col-span-2"><label class="lbl">사유 / 비고</label><input id="maReason" class="inp"></div></div>
+        <p id="maCurrent" class="text-[11px] text-slate-500"></p><p class="text-[11px] text-slate-400">교사는 마감된 날짜도 수정할 수 있습니다.</p>`, {
+        onOk: () => { const status = $('maStatus').value;
+          return modalAct('editAttendance', { sid, date: $('maDate').value, session: $('maSession').value, rec: status ? { status, in: $('maIn').value, out: $('maOut').value, reason: $('maReason').value } : null }); } });
+      $('maSession').value = guessSession(); maLoad(sid);
+    }
+    function maLoad(sid) {
+      const r = getRec($('maDate').value, $('maSession').value, sid);
+      $('maStatus').value = r ? r.status : '정상출석'; $('maIn').value = r ? r.in || '' : ''; $('maOut').value = r ? r.out || '' : ''; $('maReason').value = r ? r.reason || '' : '';
+      $('maCurrent').innerText = r ? `현재 기록: ${r.status} ${r.in ? '입실 ' + r.in : ''} ${r.out ? '퇴실 ' + r.out : ''}${r.editedBy ? ' (수정: ' + r.editedBy + ')' : ''}` : '현재 기록 없음';
+    }
+    function exportAttendanceCSV() {
+      const period = $('statsPeriodSelect').value, session = $('statsSessionSelect').value, list = visibleStudents(), ids = new Set(list.map(s => s.id));
+      const rows = [['학번', '이름', '학과', '운영일', '정상출석', '지각', '사유불참', '무단불참', '출석률', '추천가산점']];
+      list.forEach(s => { const st = calcStats(s.id, period, session); rows.push([s.id, s.name, s.dept, st.total, st.normal, st.tardy, st.excused, st.unexcused, fmtRate(st.rate), st.bonus]); });
+      rows.push([], ['[일자별 상세]'], ['날짜', '구분', '학번', '이름', '입실', '퇴실', '상태', 'GPS(m)', '비고']);
+      Object.keys(state.attendance).sort().forEach(d => ['zero', 'after'].forEach(ss => Object.values((state.attendance[d] || {})[ss] || {}).forEach(r => {
+        if (!ids.has(r.sid)) return; const s = state.students.find(x => x.id === r.sid);
+        rows.push([d, SESSION_LABEL[ss], r.sid, s ? s.name : '', r.in, r.out, r.status, r.dist ?? '', r.reason || '']); })));
+      downloadCSV(`출결통계_${scopeDept() || '전체'}_${todayStr()}.csv`, rows);
+    }
+
+    // ---- 학생 출결 ----
+    function renderStudentAtt() {
+      const s = me(), today = todayStr(), st = calcStats(s.id, 'month'), sy = calcStats(s.id, 'year');
+      $('myAttRate').innerText = fmtRate(st.rate); $('myAttCount').innerText = `${st.normal}회`; $('myTardyCount').innerText = `${st.tardy}회`; $('myAbsentCount').innerText = `${st.excused + st.unexcused}회`;
+      $('studentBonusBadge').innerText = `취업추천 가산점: +${sy.bonus}점`;
+      $('todayScheduleBox').innerHTML = ['zero', 'after'].map(ss => {
+        const active = state.activeDates[ss].includes(today), locked = state.lockedDates[ss].includes(today), win = getWindow(ss, today), r = getRec(today, ss, s.id);
+        const badge = !active || !win ? '<span class="text-slate-400">미운영</span>' : locked ? '<span class="text-rose-600 font-bold">🔒 마감</span>' : r ? statusPill(win.twoScan && r.in && !r.out ? '입실완료' : r.status) : '<span class="text-slate-500">미등록</span>';
+        return `<div class="flex items-center justify-between border border-slate-200 rounded-xl p-3"><div><p class="font-bold text-slate-800">${SESSION_LABEL[ss]}</p><p class="text-[11px] text-slate-500">${win ? esc(win.label) : '오늘 시간표 없음'}</p></div>${badge}</div>`;
+      }).join('');
+      const open = ['zero', 'after'].some(ss => state.activeDates[ss].includes(today) && !state.lockedDates[ss].includes(today) && getWindow(ss, today));
+      const w = $('studentLockWarning');
+      w.className = `rounded-xl p-3 text-xs ${open ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-500'}`;
+      w.innerHTML = (open ? '✅ 오늘 출결 등록 가능합니다.' : '📅 오늘은 등록 가능한 출결이 없습니다.') + (s.initialCred ? `<br><button onclick="setActiveTab('students')" class="underline text-rose-600 font-bold mt-1">🔐 초기 비밀번호/PIN 변경하기</button>` : '');
+      const rows = []; ['zero', 'after'].forEach(ss => state.activeDates[ss].filter(d => d <= today).forEach(d => rows.push([d, ss])));
+      rows.sort((a, b) => b[0].localeCompare(a[0]) || (a[1] === 'zero' ? -1 : 1));
+      $('studentAttLogsBody').innerHTML = rows.length ? rows.slice(0, 30).map(([d, ss]) => {
+        const r = getRec(d, ss, s.id), locked = state.lockedDates[ss].includes(d);
+        const stt = r ? (ss === 'after' && d === today && r.in && !r.out && r.status !== '사유불참' ? '입실완료' : r.status) : (d < today || locked) ? '무단불참' : '미등록';
+        const note = [r && r.reason, r && r.editedBy ? '교사 수정' : '', locked ? '🔒' : ''].filter(Boolean).join(' · ');
+        return `<tr><td class="p-2.5 font-mono whitespace-nowrap">${d.slice(5)} (${WEEK[dow(d)]})</td><td class="p-2.5">${SESSION_LABEL[ss]}</td><td class="p-2.5 font-mono">${esc(r && r.in || '-')}</td><td class="p-2.5 font-mono">${esc(r && r.out || '-')}</td>
+          <td class="p-2.5">${statusPill(stt)}</td><td class="p-2.5 font-mono">${r && r.dist != null ? r.dist + 'm' : '-'}</td><td class="p-2.5 text-slate-500">${esc(note) || '-'}</td></tr>`;
+      }).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">출결 기록이 없습니다.</td></tr>';
+    }
+    function studentScan(type) {
+      const ss = guessSession();
+      const sel = `<div><label class="lbl">운영 구분</label><select id="scSession" class="inp"><option value="zero" ${ss === 'zero' ? 'selected' : ''}>0교시</option><option value="after" ${ss === 'after' ? 'selected' : ''}>방과후</option></select></div>`;
+      const run = async reason => {
+        const p = await measureDistance();
+        if (p.error) return modalErr('📍 ' + p.error);
+        const r = await api('studentScan', Object.assign({ type, session: $('scSession').value, qrDept: codeOf(me().dept), reason }, scanPayload(p)));
+        if (!r.ok) return modalErr(r.msg);
+        closeModal(); await refresh(); alert(r.msg); return true;
+      };
+      if (type === 'attend') openModal('📷 참석 인증 (입/퇴실)', `<div class="relative w-40 h-40 mx-auto bg-slate-950 rounded-2xl overflow-hidden border-4 border-slate-800 flex items-center justify-center"><div class="scanner-laser"></div><i data-lucide="map-pin" class="w-16 h-16 text-slate-600"></i></div>
+        <p class="text-center text-slate-500">GPS로 학교 안에 있는지 확인한 뒤 출결을 등록합니다.</p>${sel}`, { okText: '출석 인증', onOk: () => run('') });
+      else openModal('🏢 사유 불참 등록', `${sel}<div><label class="lbl">불참 사유 구분</label><select id="scCat" class="inp"><option>병원 진료</option><option>대회/자격증 준비</option><option>교사 면담</option><option>기타 공결 사유</option></select></div>
+        <div><label class="lbl">상세 사유</label><textarea id="scDetail" rows="3" class="inp"></textarea></div>`, {
+        okText: '불참 등록', onOk: () => { const det = $('scDetail').value.trim(); if (!det) return modalErr('상세 사유를 입력하세요.'); return run(`${$('scCat').value} - ${det}`); } });
+    }
+
+    // ---- QR 인쇄 ----
+    function qrBaseUrl() { return (state.siteUrl || location.href).split('?')[0].split('#')[0]; }
+    function openPrintableQrModal() {
+      const opts = role() === 'teacher' ? [me().dept] : DEPT_NAMES;
+      $('qrDeptSelect').innerHTML = opts.map(d => `<option value="${codeOf(d)}">${d}</option>`).join('');
+      if (scopeDept()) $('qrDeptSelect').value = codeOf(scopeDept());
+      showModal('printableQrModal'); renderPrintableQr();
+    }
+    function renderPrintableQr() {
+      const code = $('qrDeptSelect').value, dept = deptByCode(code), base = qrBaseUrl();
+      const urlA = `${base}?qr=attend&d=${code}`, urlB = `${base}?qr=absent&d=${code}`;
+      const bad = !/^https:\/\//i.test(base);
+      $('qrUrlWarning').classList.toggle('hidden', !bad);
+      $('qrUrlWarning').innerHTML = `⚠️ QR 주소가 <b class="font-mono break-all">${esc(base)}</b> 입니다. https 주소(GitHub Pages)에서 열어야 학생 휴대폰에서 동작합니다.`;
+      document.querySelectorAll('.qr-dept-label').forEach(el => el.innerText = dept.name);
+      const z = state.zeroCfg;
+      $('printableClassroomDesc').innerHTML = `휴대폰 카메라로 스캔 → <b>학번 + PIN 4자리</b><br>0교시: <b>${z.inStart}~${z.inEnd}</b> 입실<br>방과후: 시작 전 입실 · 종료 후 퇴실 스캔`;
+      $('testLinkAttend').href = urlA; $('testLinkAbsent').href = urlB;
+      [['printableClassroomQr', urlA], ['printableOfficeQr', urlB]].forEach(([id, text]) => {
+        const el = $(id); el.innerHTML = '';
+        try { if (!window.QRCode) throw new Error('QR 라이브러리를 불러오지 못했습니다.'); new QRCode(el, { text, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); }
+        catch (e) { el.innerHTML = `<p class="text-rose-600 text-xs">${esc(e.message)}</p>`; }
+      });
+    }
+
+    // ===================================================================
+    // 학생 명단 / 내 정보
+    // ===================================================================
+    function renderStudentsTab() {
+      const staff = isStaff(); $('teacherStudentView').classList.toggle('hidden', !staff); $('myInfoView').classList.toggle('hidden', staff);
+      if (staff) { renderPending(); renderStudentGrid(); } else renderMyInfo();
+    }
+    function renderPending() {
+      const list = visibleStudents(true).filter(s => s.status === 'pending');
+      $('pendingBox').classList.toggle('hidden', !list.length);
+      $('pendingList').innerHTML = list.map(s => `<div class="flex flex-wrap items-center justify-between gap-2 bg-white border border-amber-200 rounded-xl p-3 text-xs">
+        <div><b>${esc(s.name)}</b> <span class="font-mono text-slate-500">${esc(s.id)}</span> · ${esc(s.dept)} ${s.grade}학년 · ${esc(s.email)} <span class="text-slate-400">(${esc(s.createdAt)} 신청)</span></div>
+        <div class="flex gap-2"><button onclick="act('approveStudent',{id:'${s.id}',ok:true})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded-lg">승인</button>
+        <button onclick="if(confirm('가입 신청을 거절(삭제)할까요?')) act('approveStudent',{id:'${s.id}',ok:false})" class="bg-slate-100 hover:bg-slate-200 font-semibold px-3 py-1 rounded-lg">거절</button></div></div>`).join('');
+    }
+    function renderStudentGrid() {
+      const body = $('studentGridBody'), list = visibleStudents();
+      $('studentScopeLabel').innerText = `(${scopeDept() || '전체 학과'} · ${list.length}명)`;
+      if (!list.length) { body.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400">표시할 학생이 없습니다.</td></tr>`; return; }
+      body.innerHTML = list.map(s => {
+        const ed = canManage(s);
+        const cell = (f, extra = '') => `<td class="p-1"><div ${ed ? 'contenteditable="true"' : ''} class="grid-cell px-1.5 py-1 min-w-[40px] ${extra}" onblur="updateStudentField('${s.id}','${f}',this)">${esc(s[f])}</div></td>`;
+        return `<tr class="hover:bg-slate-50">${cell('id', 'font-mono text-slate-600')}${cell('name', 'font-bold')}
+          <td class="p-1"><select ${ed ? '' : 'disabled'} onchange="updateStudentDept('${s.id}',this)" class="border border-slate-200 rounded px-1 py-1">${DEPT_NAMES.map(d => `<option ${d === s.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></td>
+          ${cell('grade')}${cell('company')}${cell('certs')}
+          <td class="p-2.5"><span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">+${calcStats(s.id, 'year').bonus}</span></td>
+          ${cell('ncsAbsences', s.ncsAbsences >= 2 ? 'text-rose-600 font-bold' : '')}
+          <td class="p-1"><div ${ed ? 'contenteditable="true"' : ''} tabindex="0" class="grid-cell ${s.phone ? 'phone-mask' : ''} px-1.5 py-1 font-mono min-w-[90px]" onblur="updateStudentField('${s.id}','phone',this)">${esc(s.phone)}</div></td>
+          ${cell('email', 'text-slate-500 min-w-[120px]')}
+          <td class="p-2.5 whitespace-nowrap">${ed ? `${s.initialCred ? '<span title="초기 비밀번호/PIN 사용 중">🔐</span> ' : ''}<button onclick="resetStudentCred('${s.id}')" class="text-indigo-600 hover:text-indigo-800 font-semibold mr-2">PIN/비번</button><button onclick="deleteStudent('${s.id}')" class="text-rose-500 hover:text-rose-700 font-semibold">삭제</button>` : '-'}</td></tr>`;
+      }).join('');
+    }
+    async function updateStudentField(id, field, el) {
+      const s = state.students.find(x => x.id === id); if (!s || !canManage(s)) return;
+      const value = el.innerText.trim();
+      if (String(s[field] ?? '') === value) return;
+      try {
+        if (field === 'id') {
+          if (!confirm(`학번을 ${s.id} → ${value}(으)로 변경할까요? 출결 기록도 함께 옮겨집니다.`)) { el.innerText = s.id; return; }
+          await api('changeStudentId', { oldId: s.id, newId: value }); await refresh(); return;
+        }
+        const v = await api('updateStudent', { id, field, value }, { silent: true });
+        s[field] = field === 'grade' || field === 'ncsAbsences' ? Number(v) : v; el.innerText = v;
+        if (field === 'ncsAbsences' || field === 'name') renderApp(); else renderRoadmap();
+      } catch (e) { alert(e.message); el.innerText = s[field] ?? ''; }
+    }
+    async function updateStudentDept(id, el) {
+      const s = state.students.find(x => x.id === id);
+      if (role() === 'teacher' && !confirm(`${s.name}을(를) ${el.value}(으)로 옮기면 더 이상 이 학생을 관리할 수 없습니다. 계속할까요?`)) { el.value = s.dept; return; }
+      if (!(await act('updateStudent', { id, field: 'dept', value: el.value }))) el.value = s.dept;
+    }
+    function resetStudentCred(id) {
+      const s = state.students.find(x => x.id === id);
+      openModal(`🔑 ${s.name} PIN / 비밀번호 초기화`, `<div><label class="lbl">새 출석 PIN (4자리, 비우면 유지)</label><input id="rcPin" inputmode="numeric" maxlength="4" class="inp font-mono"></div>
+        <div><label class="lbl">새 비밀번호 (8자 이상, 비우면 유지)</label><input id="rcPw" class="inp"></div>`,
+        { onOk: () => modalAct('resetStudentCred', { id, pin: $('rcPin').value, pw: $('rcPw').value }, '변경되었습니다. 학생에게 알려주세요.') });
+    }
+    function deleteStudent(id) { const s = state.students.find(x => x.id === id); if (confirm(`${s.name}(${id}) 학생을 삭제할까요? 출결 기록도 함께 삭제됩니다.`)) act('deleteStudent', { id }); }
+    function openTeacherAddStudent() {
+      const lock = role() === 'teacher' ? me().dept : null;
+      openModal('➕ 학생 추가 (즉시 승인)', studentFieldsHtml('ta', { dept: lock || scopeDept() || DEPT_NAMES[0], lockDept: !!lock, optional: true }) +
+        `<p class="text-[11px] text-slate-400">초기 로그인 비밀번호는 <b>학번</b>입니다. 학생이 [내 정보]에서 바꿀 수 있습니다.</p>`,
+        { wide: true, okText: '학생 등록', onOk: () => modalAct('addStudent', readStudentFields('ta')) });
+    }
+    function exportStudentCSV() {
+      const rows = [['학번', '이름', '학과', '학년', '목표기업', '보유자격증', '가산점', 'NCS불참', '연락처', '이메일']];
+      visibleStudents().forEach(s => rows.push([s.id, s.name, s.dept, s.grade, s.company, s.certs, calcStats(s.id, 'year').bonus, s.ncsAbsences, s.phone, s.email]));
+      downloadCSV(`학생명단_${scopeDept() || '전체'}_${todayStr()}.csv`, rows);
+    }
+    function renderMyInfo() {
+      const s = me(), ro = (l, v) => `<div><p class="lbl">${l}</p><p class="bg-slate-100 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700">${esc(v)}</p></div>`;
+      $('myInfoView').innerHTML = (s.initialCred ? `<div class="mb-5 bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-700 font-semibold">🔐 아직 초기 비밀번호/PIN(학번)을 쓰고 있습니다. 오른쪽에서 둘 다 바꿔주세요. 구글 이메일도 등록하면 이메일로 로그인할 수 있습니다.</div>` : '') + `
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+          <h2 class="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">👤 내 정보</h2>
+          <div class="grid grid-cols-2 gap-3">${ro('학번', s.id)}${ro('이름', s.name)}${ro('학과', s.dept)}${ro('학년', s.grade + '학년')}</div>
+          <p class="text-[11px] text-slate-400">학번·이름·학과는 담당 선생님만 수정할 수 있습니다.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="lbl">연락처</label><input id="miPhone" value="${esc(s.phone)}" class="inp font-mono"></div>
+            <div><label class="lbl">구글 이메일 (로그인 아이디)</label><input id="miEmail" value="${esc(s.email)}" class="inp"></div>
+            <div><label class="lbl">목표 기업</label><input id="miCompany" value="${esc(s.company)}" class="inp"></div>
+            <div><label class="lbl">보유 자격증</label><input id="miCerts" value="${esc(s.certs)}" class="inp"></div>
+          </div>
+          <button onclick="act('updateMyInfo',{phone:miPhone.value,email:miEmail.value,company:miCompany.value,certs:miCerts.value},'저장되었습니다.')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs">내 정보 저장</button>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+          <h2 class="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">🔑 비밀번호 / 출석 PIN 변경</h2>
+          <div><label class="lbl">현재 비밀번호</label><input id="miCurPw" type="password" class="inp"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lbl">새 비밀번호 (8자 이상)</label><input id="miNewPw" type="password" class="inp"></div>
+            <div><label class="lbl">새 출석 PIN (4자리)</label><input id="miNewPin" type="password" inputmode="numeric" maxlength="4" class="inp font-mono"></div>
+          </div>
+          <p class="text-[11px] text-slate-400">바꾸지 않을 항목은 비워두세요. 학번과 같은 값은 쓸 수 없습니다.</p>
+          <button onclick="act('changeMyCred',{cur:miCurPw.value,pw:miNewPw.value,pin:miNewPin.value},'변경되었습니다.')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs">변경하기</button>
+        </div>
+      </div>`;
+    }
+
+    // ===================================================================
+    // 과제 / 로드맵
+    // ===================================================================
+    function renderTasks() {
+      const box = $('taskListContainer'), d = scopeDept(), r = role();
+      $('btnNewTask').classList.toggle('hidden', !isStaff());
+      const tasks = state.tasks.filter(t => !d || t.dept === d).sort((a, b) => a.date.localeCompare(b.date));
+      if (!tasks.length) { box.innerHTML = '<p class="text-xs text-slate-400">등록된 과제가 없습니다.</p>'; return; }
+      box.innerHTML = tasks.map(t => {
+        const members = state.students.filter(s => s.status === 'approved' && s.dept === t.dept), done = t.doneBy.filter(id => members.some(m => m.id === id));
+        const pct = members.length ? Math.round(done.length / members.length * 100) : 0, diff = Math.round((parseDate(t.date) - parseDate(todayStr())) / 86400000);
+        const [label, cls] = diff < 0 ? ['마감', 'bg-slate-200 text-slate-600'] : diff <= 2 ? ['마감임박', 'bg-rose-100 text-rose-700'] : ['진행중', 'bg-indigo-100 text-indigo-700'];
+        let action;
+        if (r === 'student') { const mine = t.doneBy.includes(me().id);
+          action = `<button onclick="act('toggleTask',{id:'${t.id}'})" class="w-full mt-3 ${mine ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'} font-bold py-2 rounded-lg">${mine ? '✅ 다했어! (취소하려면 클릭)' : '다했어! 제출하기'}</button>`; }
+        else { const notDone = members.filter(m => !t.doneBy.includes(m.id)).map(m => m.name);
+          action = `<p class="mt-3 text-[11px] text-slate-500">미제출: ${notDone.length ? esc(notDone.join(', ')) : '없음 🎉'}</p>${canManage(t) ? `<button onclick="if(confirm('이 과제를 삭제할까요?')) act('deleteTask',{id:'${t.id}'})" class="mt-2 text-rose-500 hover:text-rose-700 font-semibold">과제 삭제</button>` : ''}`; }
+        return `<div class="border border-slate-200 rounded-xl p-4 text-xs"><div class="flex items-center justify-between mb-2"><span class="px-2 py-0.5 rounded-full font-bold ${cls}">${label}</span><span class="font-mono text-slate-500">${esc(t.date)} (${dday(t.date)})</span></div>
+          ${d ? '' : `<p class="text-[11px] text-indigo-600 font-semibold">${esc(t.dept)}</p>`}<h3 class="font-bold text-sm text-slate-900">${esc(t.title)}</h3>
+          ${r === 'student' ? '' : `<div class="flex items-center gap-2 mt-3"><div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500" style="width:${pct}%"></div></div><span class="font-bold text-slate-700">${done.length}/${members.length}</span></div>`}${action}</div>`;
+      }).join('');
+    }
+    function openNewTaskModal() {
+      const lock = role() === 'teacher', pre = lock ? me().dept : scopeDept();
+      openModal("📝 새 실습 과제 출제 ('다했니')", `<div><label class="lbl">학과</label><select id="tkDept" class="inp" ${lock ? 'disabled' : ''}>${DEPT_NAMES.map(d => `<option ${d === pre ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">과제 제목</label><input id="tkTitle" class="inp" placeholder="예: PLC 타이머 제어 실습"></div><div><label class="lbl">제출 마감일</label><input type="date" id="tkDate" value="${todayStr()}" class="inp"></div>`,
+        { okText: '과제 출제', onOk: () => modalAct('addTask', { dept: $('tkDept').value, title: $('tkTitle').value, date: $('tkDate').value }) });
+    }
+    function renderRoadmap() {
+      const box = $('roadmapCardsContainer'), list = visibleStudents();
+      if (!list.length) { box.innerHTML = '<p class="text-xs text-slate-400">학생이 없습니다.</p>'; return; }
+      box.innerHTML = list.map(s => {
+        const certs = String(s.certs || '').split(',').map(x => x.trim()).filter(Boolean), st = calcStats(s.id, 'year');
+        const steps = [['목표 기업 설정', !!String(s.company || '').trim()], ['자격증 1개 이상 취득', certs.length >= 1], ['자격증 2개 이상 취득', certs.length >= 2], ['출석률 90% 이상', st.rate !== null && st.rate >= 90], ['NCS 모의시험 무단불참 0회', Number(s.ncsAbsences) === 0]];
+        const pct = Math.round(steps.filter(x => x[1]).length / steps.length * 100);
+        return `<div class="border border-slate-200 rounded-2xl p-5 text-xs space-y-3"><div class="flex items-center justify-between"><div><p class="font-bold text-sm text-slate-900">${esc(s.name)} <span class="text-[11px] font-normal text-slate-400">${esc(s.dept)}</span></p><p class="text-slate-500">🎯 ${esc(s.company || '목표 기업 미설정')}</p></div><span class="text-lg font-extrabold text-indigo-600">${pct}%</span></div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500" style="width:${pct}%"></div></div>
+          <ul class="space-y-1.5">${steps.map(([l, ok]) => `<li class="${ok ? 'text-emerald-700' : 'text-slate-400'}">${ok ? '✅' : '⬜'} ${l}</li>`).join('')}</ul><p class="text-[11px] text-slate-500">보유 자격증: ${esc(certs.join(', ') || '없음')}</p></div>`;
+      }).join('');
+    }
+
+    // ===================================================================
+    // 메모
+    // ===================================================================
+    function setupMemoPaste() {
+      $('memoEditor').addEventListener('paste', async e => {
+        const items = (e.clipboardData && e.clipboardData.items) || [], img = Array.from(items).find(it => it.type.startsWith('image/'));
+        if (img) { e.preventDefault(); insertAtCaret(`<img src="${await resizeImage(img.getAsFile())}" alt="붙여넣은 이미지">`); return; }
+        const text = e.clipboardData.getData('text/plain'); if (text) { e.preventDefault(); insertAtCaret(esc(text).replace(/\n/g, '<br>')); }
+      });
+    }
+    function resizeImage(file) { // 구글 시트 칸 용량(5만 자) 때문에 작게 줄여서 저장
+      return new Promise(res => { const img = new Image(), url = URL.createObjectURL(file);
+        img.onload = () => { const sc = Math.min(1, 520 / img.width), c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.55)); };
+        img.src = url; });
+    }
+    function insertAtCaret(html) { $('memoEditor').focus(); document.execCommand('insertHTML', false, html); }
+    function sanitizeHtml(html) {
+      const tpl = document.createElement('template'); tpl.innerHTML = html;
+      tpl.content.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(n => n.remove());
+      tpl.content.querySelectorAll('*').forEach(el => [...el.attributes].forEach(a => { if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && !/^(data:image\/|https?:)/i.test(a.value))) el.removeAttribute(a.name); }));
+      return tpl.innerHTML;
+    }
+    async function saveMemo() {
+      const title = $('memoTitleInput').value.trim(), ed = $('memoEditor');
+      if (!title && !ed.innerText.trim() && !ed.querySelector('img')) return alert('메모 제목이나 내용을 입력하세요.');
+      if (await act('addMemo', { title, content: sanitizeHtml(ed.innerHTML.trim()) })) { $('memoTitleInput').value = ''; ed.innerHTML = ''; }
+    }
+    function renderMemos() {
+      if (!isStaff()) return;
+      $('memoList').innerHTML = state.memos.length ? [...state.memos].sort(byNewest).map(m => `<div class="border border-amber-200 bg-amber-50/50 rounded-xl p-3 text-xs">
+        <div class="flex items-center justify-between mb-1"><p class="font-bold text-slate-900">${esc(m.title)}</p><div class="flex items-center gap-2"><span class="text-slate-400 font-mono">${esc(m.date)}</span><button onclick="if(confirm('메모를 삭제할까요?')) act('deleteMemo',{id:'${esc(m.id)}'})" class="text-rose-500 hover:text-rose-700">✕</button></div></div>
+        <div class="memo-body text-slate-700 leading-relaxed">${sanitizeHtml(m.content)}</div></div>`).join('') : '<p class="text-xs text-slate-400">저장된 메모가 없습니다.</p>';
+    }
+
+    // ===================================================================
+    // 학사일정 / NCS / 채용
+    // ===================================================================
+    function renderAcademic() {
+      $('btnAddEvent').classList.toggle('hidden', !isStaff());
+      const cls = { '시험': 'bg-indigo-100 text-indigo-700', 'NCS': 'bg-rose-100 text-rose-700', '행사': 'bg-emerald-100 text-emerald-700', '방학': 'bg-amber-100 text-amber-700' };
+      const ev = [...state.academicEvents].sort((a, b) => a.date.localeCompare(b.date));
+      $('academicEventsList').innerHTML = ev.length ? ev.map(e => { const past = e.date < todayStr();
+        return `<div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-2.5 ${past ? 'opacity-50' : ''}"><div class="flex items-center gap-2 min-w-0"><span class="px-2 py-0.5 rounded font-bold ${cls[e.type] || 'bg-slate-100 text-slate-600'}">${esc(e.type)}</span><span class="font-mono text-slate-500">${esc(e.date)}</span><span class="font-semibold text-slate-800 truncate">${esc(e.title)}</span></div>
+          <div class="flex items-center gap-2"><span class="font-bold ${past ? 'text-slate-400' : 'text-indigo-600'}">${dday(e.date)}</span>${isStaff() ? `<button onclick="if(confirm('이 일정을 삭제할까요?')) act('deleteEvent',{id:'${esc(e.id)}'})" class="text-rose-400 hover:text-rose-600">✕</button>` : ''}</div></div>`; }).join('') : '<p class="text-slate-400">등록된 일정이 없습니다.</p>';
+    }
+    function addAcademicEventModal() {
+      openModal('📅 학사일정 추가', `<div><label class="lbl">날짜</label><input type="date" id="acDate" value="${todayStr()}" class="inp"></div><div><label class="lbl">제목</label><input id="acTitle" class="inp"></div>
+        <div><label class="lbl">구분</label><select id="acType" class="inp"><option>시험</option><option>NCS</option><option>행사</option><option>방학</option></select></div>`,
+        { onOk: () => modalAct('addEvent', { date: $('acDate').value, title: $('acTitle').value, type: $('acType').value }) });
+    }
+    function renderNcs() {
+      const list = [...visibleStudents()].sort((a, b) => b.ncsAbsences - a.ncsAbsences);
+      $('ncsWarningList').innerHTML = list.length ? list.map(s => { const n = Number(s.ncsAbsences) || 0;
+        const lv = n >= 2 ? ['border-rose-300 bg-rose-50', 'text-rose-700', '🚫 취업추천 제외'] : n === 1 ? ['border-amber-300 bg-amber-50', 'text-amber-700', '⚠️ 1회 경고'] : ['border-slate-200 bg-white', 'text-emerald-700', '✅ 정상'];
+        const ctrl = isStaff() && canManage(s) ? `<button onclick="changeNcs('${s.id}',-1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold">−</button><button onclick="changeNcs('${s.id}',1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold">+</button>` : '';
+        return `<div class="flex items-center justify-between border rounded-xl p-3 text-xs ${lv[0]}"><div><p class="font-bold text-slate-900">${esc(s.name)} <span class="text-slate-400 font-normal">${esc(s.dept)}</span></p><p class="${lv[1]} font-semibold mt-0.5">${lv[2]} · 불참 ${n}회</p></div><div class="flex items-center gap-1">${ctrl}</div></div>`; }).join('') : '<p class="text-xs text-slate-400">학생이 없습니다.</p>';
+    }
+    function changeNcs(id, delta) { const s = state.students.find(x => x.id === id); act('updateStudent', { id, field: 'ncsAbsences', value: Math.max(0, (Number(s.ncsAbsences) || 0) + delta) }); }
+    function renderJobs() {
+      $('btnNewJob').classList.toggle('hidden', !isStaff());
+      $('jobsList').innerHTML = state.jobs.length ? state.jobs.map(j => `<div class="border border-slate-200 rounded-xl p-4 text-xs"><div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="px-2 py-0.5 rounded font-bold ${j.cat === '공기업' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'}">${esc(j.cat)}</span><span class="font-bold text-slate-900">${esc(j.company)}</span></div>
+        ${isStaff() ? `<button onclick="if(confirm('공고를 삭제할까요?')) act('deleteJob',{id:'${esc(j.id)}'})" class="text-rose-500 hover:text-rose-700">삭제</button>` : ''}</div>
+        <p class="font-semibold text-sm text-slate-800 mt-2">${esc(j.title)}</p><details class="mt-2"><summary class="cursor-pointer text-indigo-600 font-semibold">요약 보기</summary><p class="mt-2 bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-indigo-900 leading-relaxed whitespace-pre-line">${esc(j.summary)}</p></details></div>`).join('') : '<p class="text-xs text-slate-400">등록된 공고가 없습니다.</p>';
+    }
+    function addJobModal() {
+      openModal('💼 채용 공고 등록', `<div><label class="lbl">기업명</label><input id="jbCompany" class="inp"></div><div><label class="lbl">구분</label><select id="jbCat" class="inp"><option>대기업</option><option>공기업</option><option>중견기업</option></select></div>
+        <div><label class="lbl">공고 제목</label><input id="jbTitle" class="inp"></div><div><label class="lbl">핵심 요약</label><textarea id="jbSummary" rows="3" class="inp"></textarea></div>`,
+        { okText: '등록', onOk: () => modalAct('addJob', { company: $('jbCompany').value, cat: $('jbCat').value, title: $('jbTitle').value, summary: $('jbSummary').value }) });
+    }
+
+    // ===================================================================
+    // 관리자 / 내 비밀번호
+    // ===================================================================
+    function renderAdmin() {
+      const s = state.schoolLocation;
+      $('admLat').value = s.lat; $('admLng').value = s.lng; $('admRadius').value = radius();
+      $('admMapLink').href = `https://www.google.com/maps?q=${s.lat},${s.lng}`; $('admSiteUrl').value = state.siteUrl || '';
+      $('btnTestMode').className = `w-full rounded-xl py-2.5 text-xs font-bold ${state.testMode ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`;
+      $('btnTestMode').innerText = state.testMode ? '🧪 테스트 모드 켜짐 → 끄기' : '테스트 모드 켜기';
+      const otherAdmins = state.users.filter(u => u.role === 'admin' && u.email !== me().email).length;
+      $('teacherAccountList').innerHTML = state.users.map(u => {
+        const mine = u.email === me().email, e = esc(u.email);
+        const btns = mine ? `<span class="text-slate-400">(나)</span>${otherAdmins ? ` <button onclick="demoteUser('${e}')" class="text-amber-600 font-semibold">내 관리자 권한 내려놓기</button>` : ''}`
+          : (u.role === 'admin' ? `<button onclick="demoteUser('${e}')" class="text-amber-600 font-semibold">관리자 해제</button>` : `<button onclick="if(confirm('${esc(u.name)} 선생님을 전체 관리자로 지정할까요?')) act('setUserRole',{email:'${e}',role:'admin'})" class="text-rose-600 font-semibold">관리자로 지정</button>`)
+            + `<button onclick="resetUserPw('${e}')" class="text-indigo-600 font-semibold">비번 초기화</button><button onclick="if(confirm('${e} 계정을 삭제할까요?')) act('deleteUser',{email:'${e}'})" class="text-rose-500 font-semibold">삭제</button>`;
+        return `<div class="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-xl p-3 text-xs"><div><span class="${u.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'} px-2 py-0.5 rounded font-bold">${u.role === 'admin' ? '전체 관리자' : esc(u.dept) + ' ' + esc(u.position)}</span>
+          <b class="ml-1">${esc(u.name)}</b> <span class="text-slate-500">${e}</span></div><div class="flex flex-wrap gap-2 items-center">${btns}</div></div>`;
+      }).join('') + `<p class="text-[11px] text-slate-400 mt-2">권한 넘기기: ① 새 관리자 선생님 추가(또는 [관리자로 지정]) → ② 그 선생님 로그인 확인 → ③ 내 줄의 [내 관리자 권한 내려놓기]</p>`;
+    }
+    function demoteUser(email) {
+      const u = state.users.find(x => x.email === email), mine = email === me().email;
+      openModal(mine ? '내 관리자 권한 내려놓기' : `${u.name} 관리자 해제`, `<p class="text-slate-600">아래 학과의 교사 계정으로 바뀝니다.</p>
+        <div><label class="lbl">학과</label><select id="dmDept" class="inp">${DEPT_NAMES.map(d => `<option>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">직책</label><select id="dmPos" class="inp"><option>학과부장</option><option selected>교사</option></select></div>`,
+        { okText: '변경', onOk: async () => { await api('setUserRole', { email, role: 'teacher', dept: $('dmDept').value, position: $('dmPos').value }); closeModal(); if (mine) state.activeTab = 'attendance'; await refresh(); return true; } });
+    }
+    function resetUserPw(email) { const pw = prompt('새 비밀번호 (8자 이상)'); if (pw) act('resetUserPw', { email, pw }, '변경되었습니다.'); }
+    function openTeacherModal() {
+      openModal('👩‍🏫 교사 계정 추가', `<div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">이름</label><input id="tcName" class="inp"></div><div><label class="lbl">구글 이메일</label><input id="tcEmail" type="email" class="inp"></div>
+        <div><label class="lbl">권한</label><select id="tcRole" class="inp" onchange="tcDeptBox.classList.toggle('hidden', this.value==='admin')"><option value="teacher">학과 교사</option><option value="admin">전체 관리자</option></select></div>
+        <div id="tcDeptBox"><label class="lbl">학과</label><select id="tcDept" class="inp">${DEPT_NAMES.map(d => `<option>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">직책</label><select id="tcPos" class="inp"><option>학과부장</option><option selected>교사</option></select></div>
+        <div><label class="lbl">초기 비밀번호 (8자 이상)</label><input id="tcPw" class="inp"></div></div>`,
+        { okText: '계정 추가', onOk: () => modalAct('addUser', { name: $('tcName').value, email: $('tcEmail').value, role: $('tcRole').value, dept: $('tcDept').value, position: $('tcPos').value, pw: $('tcPw').value }, '추가되었습니다. 선생님께 이메일과 초기 비밀번호를 알려주세요.') });
+    }
+    function openMyPwModal() {
+      openModal('🔑 내 비밀번호 변경', `<div><label class="lbl">현재 비밀번호</label><input id="mpCur" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 (8자 이상)</label><input id="mpNew" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 확인</label><input id="mpNew2" type="password" class="inp"></div>`,
+        { okText: '변경', onOk: async () => { if ($('mpNew').value !== $('mpNew2').value) return modalErr('새 비밀번호 확인이 일치하지 않습니다.'); await api('changeMyPw', { cur: $('mpCur').value, pw: $('mpNew').value }); alert('비밀번호가 변경되었습니다.'); return true; } });
+    }
+    function fillCurrentLocation() {
+      $('admLocStatus').innerText = '현재 위치 측정 중...';
+      if (!navigator.geolocation) return ($('admLocStatus').innerText = '이 브라우저는 위치 정보를 지원하지 않습니다.');
+      navigator.geolocation.getCurrentPosition(p => { $('admLat').value = p.coords.latitude.toFixed(6); $('admLng').value = p.coords.longitude.toFixed(6);
+        $('admLocStatus').innerText = `측정 완료 (정확도 약 ${Math.round(p.coords.accuracy)}m). [좌표 저장]을 눌러야 적용됩니다.`; },
+        () => $('admLocStatus').innerText = '위치를 가져오지 못했습니다. 위치 권한을 허용했는지 확인하세요.', { enableHighAccuracy: true, timeout: 15000 });
+    }
+    function saveSchoolLocation() { act('saveLocation', { lat: $('admLat').value, lng: $('admLng').value, radius: $('admRadius').value }, '📍 학교 좌표가 저장되었습니다.'); }
+    function saveSiteUrl() { act('saveSiteUrl', { url: $('admSiteUrl').value }, '저장되었습니다.'); }
+    function toggleTestMode() {
+      const on = !state.testMode;
+      if (on && !confirm('테스트 모드를 켤까요?\n켜져 있는 동안은 가짜 위치·시각으로 출석할 수 있습니다. 시험이 끝나면 꼭 끄세요.')) return;
+      act('setTestMode', { on }, on ? '🧪 테스트 모드를 켰습니다. 오른쪽 아래 [시연 설정]을 사용하세요.' : '테스트 모드를 껐습니다. 이제 실제 GPS·실제 시각으로만 출석됩니다.');
+    }
+  </script>
+</body>
+</html>
