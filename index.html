@@ -426,6 +426,156 @@
 
       <!-- ===== 관리자 ===== -->
       <div id="sec-admin" class="tab-content hidden space-y-6">
+        <!-- 📖 관리자 사용 설명서 (펼쳐보기) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 guide">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+            <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="book-open" class="w-5 h-5 text-indigo-600"></i> 관리자 사용 설명서</h2>
+            <div class="flex gap-2 text-xs">
+              <button onclick="document.querySelectorAll('.guide details').forEach(d=>d.open=true)" class="bg-slate-100 hover:bg-slate-200 rounded-lg px-2.5 py-1 font-semibold">모두 펼치기</button>
+              <button onclick="document.querySelectorAll('.guide details').forEach(d=>d.open=false)" class="bg-slate-100 hover:bg-slate-200 rounded-lg px-2.5 py-1 font-semibold">모두 접기</button>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+
+            <details class="border border-indigo-200 bg-indigo-50/40 rounded-xl" open>
+              <summary class="cursor-pointer px-4 py-3 font-bold text-indigo-900">✅ 처음 운영 시작 체크리스트</summary>
+              <div class="px-4 pb-4 space-y-1.5">
+                <p class="text-slate-500 mb-2">위에서부터 순서대로 하시면 됩니다.</p>
+                <ol class="list-decimal pl-5 space-y-1.5">
+                  <li><b>관리자 비밀번호 변경</b>: 화면 위 내 이름을 누르면 언제든 바꿀 수 있습니다.</li>
+                  <li><b>교사 계정 추가</b>: 아래 [교사 계정 관리 → + 교사 추가]에서 학과별로 학과부장과 담당 선생님을 추가합니다.</li>
+                  <li><b>학생 명단 확인</b>: [학생 명단] 탭. <b>3302 김영진</b>은 원래 명단에 학과가 비어 있어 자동화시스템과로 임시 등록했습니다.</li>
+                  <li><b>운영일 지정</b>: [출결 탭 → 2. 운영일]에서 0교시와 방과후 각각 <b>[이번 달 평일 일괄 운영]</b>을 누르고, 공휴일·시험일은 날짜를 눌러 해제합니다.</li>
+                  <li><b>학교 좌표 저장 (학교에서)</b>: 휴대폰으로 이 사이트에 접속 → 아래 [📍 현재 위치 가져오기 → 좌표 저장]</li>
+                  <li><b>시험해 보기</b>: 아래 [테스트 모드 켜기] → 오른쪽 아래 🧪 시연 설정으로 출석을 시험 → <b class="text-rose-600">끝나면 꼭 끄기</b></li>
+                  <li><b>QR 인쇄</b>: [출결 탭 → 3. QR 인쇄] → 학과별로 교실용·교무실용을 인쇄해서 붙입니다.</li>
+                  <li><b>학생 안내</b>: 처음 비밀번호와 PIN은 <b>본인 학번</b>입니다. 첫 로그인 때 꼭 바꾸게 하세요. 아직 안 바꾼 학생은 명단에 🔐가 붙습니다.</li>
+                </ol>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🔗 사이트·서버 정보</summary>
+              <div class="px-4 pb-4">
+                <table class="w-full">
+                  <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-semibold whitespace-nowrap">사이트 주소</td><td class="font-mono break-all"><a href="https://yuhan-major.github.io/attendance/" target="_blank" class="text-indigo-600 underline">https://yuhan-major.github.io/attendance/</a></td></tr>
+                  <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-semibold whitespace-nowrap">화면 파일</td><td>GitHub 조직 <b>yuhan-major</b> → 저장소 <b>attendance</b> → <code>index.html</code></td></tr>
+                  <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-semibold whitespace-nowrap">데이터 저장</td><td>deco0627@gmail.com 구글 드라이브의 <b>구글 시트</b> (탭: Students, Attendance, Users …)</td></tr>
+                  <tr><td class="py-1.5 pr-3 font-semibold whitespace-nowrap">서버</td><td>그 구글 시트의 [확장 프로그램 → Apps Script]</td></tr>
+                </table>
+                <p class="mt-2 text-slate-500">구글 시트의 <b>Attendance</b> 탭에서 모든 출결 원본을 볼 수 있습니다. 수정은 시트에서 직접 하지 말고 사이트에서 하세요.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">👥 권한 안내 (누가 무엇을 볼 수 있나)</summary>
+              <div class="px-4 pb-4">
+                <table class="w-full">
+                  <thead><tr class="text-left text-slate-500 border-b border-slate-200"><th class="py-1.5">구분</th><th>볼 수 있는 것</th><th>할 수 있는 것</th></tr></thead>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold text-rose-600 whitespace-nowrap pr-2">전체 관리자</td><td class="pr-2">모든 학과</td><td>모든 수정, 교사 계정 관리, 전체 공지, 학교 좌표, 테스트 모드</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold text-indigo-600 whitespace-nowrap pr-2">학과부장·교사</td><td class="pr-2">자기 학과 학생만</td><td>학생 추가·수정·삭제, 가입 승인, 출결 수정, 통계, 학과 공지, 과제</td></tr>
+                  <tr class="align-top"><td class="py-1.5 font-semibold text-emerald-600 whitespace-nowrap pr-2">학생</td><td class="pr-2">본인 정보만</td><td>출석, 내 연락처·목표기업·자격증 수정, 비밀번호·PIN 변경</td></tr>
+                </table>
+                <p class="mt-2 text-slate-500">학과 공지는 그 학과와 관리자만 보고, 전체 공지는 모두가 봅니다.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🧑‍🏫 교사 계정 추가 · 관리자 권한 넘기기</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <p><b>교사 추가</b>: 아래 [교사 계정 관리 → + 교사 추가] → 이름, 구글 이메일, 학과, 직책(학과부장/교사), 초기 비밀번호(8자 이상) 입력</p>
+                <p class="bg-amber-50 border border-amber-200 rounded-lg p-2">💡 초기 비밀번호를 <b>admin1234</b>로 만들면, 그 선생님이 처음 로그인할 때 비밀번호 변경 창이 자동으로 뜹니다.</p>
+                <p><b>추가한 뒤 선생님께 알려드릴 것</b>: 사이트 주소, 로그인 이메일, 초기 비밀번호</p>
+                <p><b>비밀번호를 잊으셨을 때</b>: 그 선생님 줄의 [비번 초기화]</p>
+                <p class="font-bold pt-1">관리자 권한 넘기는 순서</p>
+                <ol class="list-decimal pl-5 space-y-1">
+                  <li>새 관리자가 될 선생님을 추가하거나, 기존 교사 줄에서 [관리자로 지정]</li>
+                  <li>그 선생님이 로그인해서 [관리자 설정] 탭이 보이는지 확인</li>
+                  <li>내 줄에서 [내 관리자 권한 내려놓기] → 나는 일반 교사로 바뀝니다</li>
+                </ol>
+                <p class="text-slate-500">관리자는 항상 1명 이상 남아 있어야 합니다. 구글 시트·Apps Script의 주인(deco0627@gmail.com)은 따로 넘겨야 합니다 (구글 시트 [공유]에서 소유자 이전).</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">📱 학생 출석 방법</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <ol class="list-decimal pl-5 space-y-1">
+                  <li>교실(또는 교무실)에 붙은 QR을 <b>휴대폰 기본 카메라</b>로 비춥니다.</li>
+                  <li>출석 화면이 열리면 <b>학번 + PIN 4자리</b>를 입력합니다.</li>
+                  <li>휴대폰 GPS로 학교 반경 안에 있는지 확인한 뒤 출석이 등록됩니다.</li>
+                </ol>
+                <p>• 0교시와 방과후는 <b>같은 QR</b>을 씁니다. 시간에 따라 자동으로 구분되고, 학생이 직접 바꿀 수도 있습니다.</p>
+                <p>• <b>교무실 불참 QR</b>: 병원·상담 등으로 빠질 때 교무실에서 스캔하고 사유를 입력합니다.</p>
+                <p>• 다른 학과 QR로는 출석할 수 없습니다.</p>
+                <p>• 처음 위치 권한을 물으면 반드시 <b>[허용]</b>을 눌러야 합니다.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">⏰ 출결 시간 규칙 · 가산점</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <table class="w-full">
+                  <thead><tr class="text-left text-slate-500 border-b border-slate-200"><th class="py-1.5">구분</th><th>스캔</th><th>규칙 (기본값)</th></tr></thead>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold pr-2">0교시</td><td class="pr-2">1번 (입실)</td><td>08:00~08:40 정상, 09:00까지 지각</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 font-semibold pr-2">방과후 월·목·금</td><td class="pr-2">2번 (입실/퇴실)</td><td>15:40 시작 (7·8·9교시) ~ 18:00</td></tr>
+                  <tr class="align-top"><td class="py-1.5 font-semibold pr-2">방과후 화·수</td><td class="pr-2">2번 (입실/퇴실)</td><td>16:40 시작 (7교시 50분·8교시) ~ 18:00</td></tr>
+                </table>
+                <p>• 방과후: 시작 <b>20분 전</b>부터 입실, 시작 시각까지 정상, 시작 후 <b>30분</b>까지 지각, 종료 <b>10분 전</b>부터 퇴실</p>
+                <p>• 시간은 [출결 탭 → 1. 시간 규칙]에서 바꿀 수 있습니다. 출석 시각은 학생 휴대폰이 아니라 <b>서버 시계</b>로 기록됩니다.</p>
+                <p>• <b>가산점</b>: 출석률 90% 이상 +15점, 지각 1회 -1점, 무단불참 1회 -3점 (최저 0점). 사유불참은 출석률 계산에서 빠집니다.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🔒 일 마감 · 출결 기록 수정</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <p>• <b>일 마감</b>: [출결 탭 → 2. 운영일] 달력에서 날짜의 🔓를 누르면 🔒 마감됩니다. 마감하면 학생이 더 이상 등록할 수 없고, 기록이 없는 학생은 <b>무단불참</b>으로 집계됩니다.</p>
+                <p>• 마감하지 않아도 날짜가 지나면 기록 없는 학생은 무단불참으로 집계됩니다.</p>
+                <p>• <b>기록 수정</b>: [출결 탭 → 4. 통계] 표에서 학생 줄의 [기록 수정] → 날짜·구분을 고르고 상태를 바꿉니다. 마감된 날짜도 교사는 수정할 수 있고, 수정한 사람 이름이 기록됩니다.</p>
+                <p>• <b>실시간 현황판</b>: 출결 탭 맨 위. 30초마다 자동으로 새로고침되고, 미등록 학생이 맨 앞에 보입니다.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🧪 테스트 모드</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <p>• 켜면 화면 오른쪽 아래에 <b>🧪 시연 설정</b>이 나타나, 가짜 날짜·시각·위치로 PC에서도 출석을 시험할 수 있습니다.</p>
+                <p>• 예) 날짜를 평일로, 시각을 <b>08:20</b>으로 → 0교시 정상 출석 / <b>15:30</b> → 방과후 입실 / <b>17:55</b> → 방과후 퇴실</p>
+                <p class="text-rose-600 font-semibold">• 켜져 있는 동안은 학생도 가짜 위치로 출석할 수 있으니, 시험이 끝나면 반드시 끄세요. 켜져 있으면 모든 화면 위에 빨간 띠가 보입니다.</p>
+                <p>• 시험하면서 생긴 출결 기록은 [기록 수정 → 상태: (기록 삭제)]로 지우면 됩니다.</p>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🛠 자주 생기는 문제</summary>
+              <div class="px-4 pb-4">
+                <table class="w-full">
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">학생이 PIN·비밀번호를 잊음</td><td>[학생 명단] → 그 학생 줄의 [PIN/비번]</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">PIN을 5번 틀려 잠김</td><td>10분 뒤 다시 하거나, PIN을 초기화하면 바로 풀립니다</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">"위치 권한이 거부됨"</td><td>휴대폰 위치(GPS)를 켜고, 브라우저 설정에서 이 사이트의 위치를 [허용]</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">학교 안인데 "반경 밖"</td><td>학교 좌표가 틀렸을 수 있습니다. 학교에서 [현재 위치 가져오기]로 다시 저장하세요</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">"운영일이 아닙니다"</td><td>달력에서 그날을 운영일로 지정했는지 확인하세요 (0교시·방과후 따로)</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">로그인이 자꾸 풀림</td><td>6시간 동안 사용하지 않으면 자동 로그아웃됩니다 (보안)</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1.5 pr-3 font-semibold">회원가입한 학생이 로그인 못 함</td><td>학과 선생님이 [학생 명단] 위쪽 "가입 승인 대기"에서 승인해야 합니다</td></tr>
+                  <tr class="align-top"><td class="py-1.5 pr-3 font-semibold">"서버 연결 실패"</td><td>인터넷 연결 확인. 계속되면 Apps Script 배포가 "모든 사용자"인지 확인하세요</td></tr>
+                </table>
+              </div>
+            </details>
+
+            <details class="border border-slate-200 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-slate-900">🔧 프로그램 고쳤을 때 반영하는 법</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <p><b>화면(index.html)을 고쳤을 때</b>: GitHub [yuhan-major/attendance] → <b>Add file → Upload files</b> → 새 index.html을 끌어다 놓고 → <b>Commit changes</b>. 1~2분 뒤 반영됩니다.</p>
+                <p><b>서버(Code.gs)를 고쳤을 때</b>: Apps Script에 붙여넣고 저장 → <b>배포 → 배포 관리 → ✏️ 수정 → 버전: 새 버전 → 배포</b></p>
+                <p class="bg-amber-50 border border-amber-200 rounded-lg p-2">⚠️ "새 배포"로 하면 서버 주소가 바뀌어서 index.html도 다시 고쳐야 합니다. 꼭 <b>배포 관리 → 새 버전</b>으로 하세요.</p>
+                <p class="text-rose-600 font-semibold">⚠️ Code.gs에는 학생 명단이 들어 있으니 GitHub에 올리지 마세요.</p>
+              </div>
+            </details>
+
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="space-y-6">
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
@@ -1273,16 +1423,30 @@
         <div><label class="lbl">과제 제목</label><input id="tkTitle" class="inp" placeholder="예: PLC 타이머 제어 실습"></div><div><label class="lbl">제출 마감일</label><input type="date" id="tkDate" value="${todayStr()}" class="inp"></div>`,
         { okText: '과제 출제', onOk: () => modalAct('addTask', { dept: $('tkDept').value, title: $('tkTitle').value, date: $('tkDate').value }) });
     }
+    // 학년도: 3월에 새 학년 시작 (1~2월은 전 학년도)
+    function schoolYear() { const [y, m] = todayStr().split('-').map(Number); return m < 3 ? y - 1 : y; }
     function renderRoadmap() {
       const box = $('roadmapCardsContainer'), list = visibleStudents();
-      if (!list.length) { box.innerHTML = '<p class="text-xs text-slate-400">학생이 없습니다.</p>'; return; }
-      box.innerHTML = list.map(s => {
+      if (!list.length) { box.innerHTML = '<p class="col-span-full text-xs text-slate-400">학생이 없습니다.</p>'; return; }
+      const sy = schoolYear();
+      const gradeCls = { 3: 'bg-indigo-600 text-white', 2: 'bg-emerald-600 text-white', 1: 'bg-amber-500 text-white' };
+      const card = s => {
         const certs = String(s.certs || '').split(',').map(x => x.trim()).filter(Boolean), st = calcStats(s.id, 'year');
         const steps = [['목표 기업 설정', !!String(s.company || '').trim()], ['자격증 1개 이상 취득', certs.length >= 1], ['자격증 2개 이상 취득', certs.length >= 2], ['출석률 90% 이상', st.rate !== null && st.rate >= 90], ['NCS 모의시험 무단불참 0회', Number(s.ncsAbsences) === 0]];
         const pct = Math.round(steps.filter(x => x[1]).length / steps.length * 100);
-        return `<div class="border border-slate-200 rounded-2xl p-5 text-xs space-y-3"><div class="flex items-center justify-between"><div><p class="font-bold text-sm text-slate-900">${esc(s.name)} <span class="text-[11px] font-normal text-slate-400">${esc(s.dept)}</span></p><p class="text-slate-500">🎯 ${esc(s.company || '목표 기업 미설정')}</p></div><span class="text-lg font-extrabold text-indigo-600">${pct}%</span></div>
+        return `<div class="border border-slate-200 rounded-2xl p-5 text-xs space-y-3"><div class="flex items-center justify-between"><div>
+            <p class="font-bold text-sm text-slate-900 flex items-center gap-1.5 flex-wrap"><span class="${gradeCls[s.grade] || 'bg-slate-500 text-white'} text-[10px] font-bold px-1.5 py-0.5 rounded">${s.grade}학년</span>${esc(s.name)} <span class="text-[11px] font-normal text-slate-400">${esc(s.dept)} · ${esc(s.id)}</span></p>
+            <p class="text-slate-500 mt-0.5">🎯 ${esc(s.company || '목표 기업 미설정')}</p></div><span class="text-lg font-extrabold text-indigo-600">${pct}%</span></div>
           <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500" style="width:${pct}%"></div></div>
           <ul class="space-y-1.5">${steps.map(([l, ok]) => `<li class="${ok ? 'text-emerald-700' : 'text-slate-400'}">${ok ? '✅' : '⬜'} ${l}</li>`).join('')}</ul><p class="text-[11px] text-slate-500">보유 자격증: ${esc(certs.join(', ') || '없음')}</p></div>`;
+      };
+      // 학년별로 묶어서 표시 (3학년 → 2학년 → 1학년)
+      const grades = [...new Set(list.map(s => Number(s.grade) || 0))].sort((a, b) => b - a);
+      box.innerHTML = grades.map(g => {
+        const group = list.filter(s => (Number(s.grade) || 0) === g).sort((a, b) => a.id.localeCompare(b.id));
+        return `<div class="col-span-full flex items-center gap-2 pt-2 ${g === grades[0] ? '' : 'mt-2 border-t border-slate-100'}">
+            <span class="${gradeCls[g] || 'bg-slate-500 text-white'} text-xs font-bold px-2.5 py-1 rounded-lg">${sy}학년도 ${g}학년</span><span class="text-xs text-slate-400">${group.length}명</span></div>`
+          + group.map(card).join('');
       }).join('');
     }
 
