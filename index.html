@@ -41,6 +41,17 @@
     <div class="spinner"></div> 처리 중...
   </div>
 
+  <!-- 처음 열 때 / 로그인할 때 보여주는 큰 로딩 화면 (유일한 박사님) -->
+  <div id="bigLoading" class="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-3" style="background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 55%, #e0e7ff 100%);">
+    <div class="relative mb-1">
+      <img src="founder-statue.jpg" alt="유일한 박사님 동상" class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md" style="object-position: 72% 32%;">
+      <div class="absolute -inset-1.5 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+    </div>
+    <p class="text-slate-800 text-base font-bold">잠시만 기다려주세요</p>
+    <p id="bigLoadingMsg" class="text-xs text-indigo-600 font-semibold -mt-1">불러오는 중...</p>
+    <p class="text-sm text-slate-400">유일한 박사님도 응원하고 계세요 🌿</p>
+  </div>
+
   <!-- 설정 안 됨 / 오류 화면 -->
   <section id="configScreen" class="screen hidden min-h-screen flex items-center justify-center p-4 bg-slate-900">
     <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-3 text-sm">
@@ -776,8 +787,14 @@
       if (c.siteUrl !== undefined) state.siteUrl = c.siteUrl;
       $('demoPanel').classList.toggle('hidden', !state.testMode);
     }
-    async function refresh() {
-      const d = await api('bootstrap');
+    // 큰 로딩 화면: 너무 빨리 사라지면 깜빡이는 것처럼 보여서 최소 0.7초는 보여줌
+    let bigLoadingAt = Date.now();
+    function showBigLoading(msg) { $('bigLoadingMsg').innerText = msg || '불러오는 중...'; $('bigLoading').classList.remove('hidden'); bigLoadingAt = Date.now(); }
+    function setBigLoadingMsg(msg) { $('bigLoadingMsg').innerText = msg; }
+    async function hideBigLoading() { const wait = 700 - (Date.now() - bigLoadingAt); if (wait > 0) await sleep(wait); $('bigLoading').classList.add('hidden'); }
+
+    async function refresh(silent) {
+      const d = await api('bootstrap', {}, { silent: !!silent });
       applyConfig(d.config);
       state.me = d.me; state.role = d.role; state.students = d.students;
       state.attendance = {};
@@ -809,15 +826,18 @@
     async function doLogin(e) {
       e.preventDefault();
       const err = m => { $('loginError').innerText = m; $('loginError').classList.remove('hidden'); };
+      showBigLoading('로그인 확인 중...');
       try {
-        const r = await api('login', { id: $('loginEmail').value.trim(), pw: $('loginPw').value });
+        const r = await api('login', { id: $('loginEmail').value.trim(), pw: $('loginPw').value }, { silent: true });
         token = r.token; store.set(token);
         $('loginPw').value = ''; $('loginError').classList.add('hidden');
         state.adminDept = 'ALL'; state.activeTab = 'attendance'; state.stripHidden = false;
-        await refresh(); showScreen('app');
+        setBigLoadingMsg('학생·출결 정보를 불러오는 중...');
+        await refresh(true); showScreen('app');
+        await hideBigLoading();
         if (r.initialPw) { alert('🔐 초기 비밀번호를 사용 중입니다. 다음 창에서 바로 변경해주세요.'); openMyPwModal(); }
         else if (role() === 'student' && me().initialCred) { alert('🔐 처음 비밀번호/PIN(학번)을 쓰고 있어요. [내 정보]에서 꼭 바꿔주세요.'); setActiveTab('students'); }
-      } catch (ex) { err(ex.message); }
+      } catch (ex) { await hideBigLoading(); err(ex.message); }
     }
     async function logout() {
       try { await api('logout', {}, { silent: true }); } catch (e) {}
@@ -833,15 +853,20 @@
     }
     window.onload = async function () {
       icons();
-      if (!/^https:\/\/script\.google\.com\//.test(API_URL)) return showScreen('config');
+      if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { hideBigLoading(); return showScreen('config'); }
       setupMemoPaste(); startLiveClock();
-      try { applyConfig(await api('publicInfo')); }
-      catch (e) { $('configMsg').innerText = '서버 연결 실패: ' + e.message + '\n\nApps Script 배포 설정(액세스: 모든 사용자)과 API_URL을 확인하세요.'; return showScreen('config'); }
+      setBigLoadingMsg('서버에 연결하는 중...');
+      try { applyConfig(await api('publicInfo', {}, { silent: true })); }
+      catch (e) { $('configMsg').innerText = '서버 연결 실패: ' + e.message + '\n\nApps Script 배포 설정(액세스: 모든 사용자)과 API_URL을 확인하세요.'; showScreen('config'); return hideBigLoading(); }
       const p = new URLSearchParams(location.search);
-      if (p.get('qr')) { qrParams = { type: p.get('qr') === 'absent' ? 'absent' : 'attend', dept: p.get('d') || '' }; return openQuickScreen(); }
+      if (p.get('qr')) { qrParams = { type: p.get('qr') === 'absent' ? 'absent' : 'attend', dept: p.get('d') || '' }; openQuickScreen(); return hideBigLoading(); }
       token = store.get();
-      if (token) { try { await refresh(); return showScreen('app'); } catch (e) { token = null; store.set(null); } }
+      if (token) {
+        setBigLoadingMsg('학생·출결 정보를 불러오는 중...');
+        try { await refresh(true); showScreen('app'); return hideBigLoading(); } catch (e) { token = null; store.set(null); }
+      }
       showScreen('login');
+      hideBigLoading();
     };
     function startLiveClock() {
       setInterval(() => { const el = $('liveClockText'); if (el) el.innerText = state.testMode && $('simTime').value ? `${$('simTime').value} (시연)` : kstNow().sec; }, 1000);
