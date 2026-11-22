@@ -161,7 +161,7 @@
             <span class="text-xs text-slate-400 px-2 font-medium">학과:</span>
             <select id="adminDeptSelect" onchange="state.adminDept=this.value;renderApp()" class="bg-slate-900 text-white text-xs rounded border border-slate-700 px-2 py-1 font-medium"></select>
           </div>
-          <button id="userChip" onclick="role()==='student' ? setActiveTab('students') : openMyPwModal()" title="내 비밀번호 변경" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 border border-slate-700 text-xs"></button>
+          <button id="userChip" onclick="onUserChipClick()" title="내 계정 (이름·비밀번호 변경)" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 border border-slate-700 text-xs"></button>
           <button onclick="refresh()" title="새로고침" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i></button>
           <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold">로그아웃</button>
         </div>
@@ -777,7 +777,7 @@
       bootstrap: '최신 정보로 새로고침하는 중...', today: '실시간 현황을 불러오는 중...',
       scan: '출석을 확인하는 중...', studentScan: '출석을 확인하는 중...', signup: '가입 신청을 보내는 중...',
       addUser: '선생님 계정을 만드는 중...', deleteUser: '계정을 삭제하는 중...', setUserRole: '권한을 바꾸는 중...', resetUserPw: '비밀번호를 바꾸는 중...',
-      savePositions: '직책 목록을 저장하는 중...',
+      savePositions: '직책 목록을 저장하는 중...', updateMyProfile: '이름을 저장하는 중...',
       addStudent: '학생을 등록하는 중...', updateStudent: '학생 정보를 저장하는 중...', changeStudentId: '학번을 바꾸고 출결 기록을 옮기는 중...',
       deleteStudent: '학생과 출결 기록을 삭제하는 중...', approveStudent: '가입 신청을 처리하는 중...', resetStudentCred: 'PIN·비밀번호를 바꾸는 중...',
       updateMyInfo: '내 정보를 저장하는 중...', changeMyCred: '비밀번호·PIN을 바꾸는 중...', changeMyPw: '비밀번호를 바꾸는 중...',
@@ -1121,7 +1121,10 @@
       $('adminDeptBox').classList.toggle('hidden', !viewAll());
       if (viewAll()) { $('adminDeptSelect').innerHTML = `<option value="ALL">전체 학과</option>` + DEPT_NAMES.map(d => `<option>${d}</option>`).join(''); $('adminDeptSelect').value = state.adminDept; }
       const badge = r === 'admin' ? ['bg-rose-500', '전체 관리자'] : r === 'viewer' ? ['bg-amber-500', u.position] : r === 'teacher' ? ['bg-indigo-500', `${u.dept} ${u.position}`] : ['bg-emerald-500', `${u.dept} 학생`];
-      $('userChip').innerHTML = `<span class="${badge[0]} text-white px-2 py-0.5 rounded font-bold text-[11px]">${esc(badge[1])}</span><span class="font-semibold">${esc(u.name)}</span>`;
+      // 이름이 배지와 같으면(예: 처음 만든 관리자 이름 "전체 관리자") 같은 글자가 두 번 보이지 않게 이름 대신 안내 표시
+      const showName = u.name && u.name !== badge[1];
+      $('userChip').innerHTML = `<span class="${badge[0]} text-white px-2 py-0.5 rounded font-bold text-[11px]">${esc(badge[1])}</span>`
+        + (showName ? `<span class="font-semibold">${esc(u.name)}</span>` : `<span class="text-slate-400">이름 설정 ✏️</span>`);
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('hidden', !b.dataset.roles.split(',').includes(r)));
       $('tabStudentsLabel').innerText = r === 'student' ? '내 정보' : '학생 명단 (엑셀 그리드)';
       document.querySelectorAll('.editor-only').forEach(el => el.classList.toggle('hidden', !isEditor()));
@@ -1725,10 +1728,33 @@
       return true;
     }
     function resetUserPw(email) { const pw = prompt('새 비밀번호 (8자 이상)'); if (pw) act('resetUserPw', { email, pw }, '변경되었습니다.'); }
-    function openMyPwModal() {
-      openModal('🔑 내 비밀번호 변경', `<div><label class="lbl">현재 비밀번호</label><input id="mpCur" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 (8자 이상)</label><input id="mpNew" type="password" class="inp"></div><div><label class="lbl">새 비밀번호 확인</label><input id="mpNew2" type="password" class="inp"></div>`,
-        { okText: '변경', onOk: async () => { if ($('mpNew').value !== $('mpNew2').value) return modalErr('새 비밀번호 확인이 일치하지 않습니다.'); await api('changeMyPw', { cur: $('mpCur').value, pw: $('mpNew').value }); alert('비밀번호가 변경되었습니다.'); return true; } });
+    // 화면 위 내 이름 버튼: 학생은 [내 정보] 탭, 선생님은 내 계정 창
+    // (onclick 안에서 role()을 직접 부르면 버튼 자체의 role 속성과 이름이 겹쳐 오류가 나므로 함수로 감쌈)
+    function onUserChipClick() { if (role() === 'student') setActiveTab('students'); else openMyAccountModal(); }
+    function openMyAccountModal(focusPw) {
+      const u = me();
+      openModal('👤 내 계정', `
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-600">${roleBadge(u)} <span class="ml-1">${esc(u.email)}</span></div>
+        <div><label class="lbl">이름 (화면에 보이는 이름)</label>
+          <div class="flex gap-2"><input id="myName" class="inp" value="${esc(u.name)}" placeholder="예: 홍길동"><button onclick="saveMyName()" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg px-3">저장</button></div>
+          ${state.serverHasViewer ? '' : '<p class="text-[11px] text-amber-600 mt-1">이름 변경은 서버(Apps Script)를 새 버전으로 배포한 뒤 사용할 수 있습니다.</p>'}</div>
+        <div class="border-t border-slate-100 pt-3 space-y-2">
+          <p class="font-bold text-slate-800">🔑 비밀번호 변경</p>
+          <div><label class="lbl">현재 비밀번호</label><input id="mpCur" type="password" class="inp"></div>
+          <div class="grid grid-cols-2 gap-2"><div><label class="lbl">새 비밀번호 (8자 이상)</label><input id="mpNew" type="password" class="inp"></div>
+          <div><label class="lbl">새 비밀번호 확인</label><input id="mpNew2" type="password" class="inp"></div></div>
+        </div>`,
+        { okText: '비밀번호 변경', onOk: async () => {
+          if (!$('mpCur').value) return modalErr('비밀번호를 바꾸려면 현재 비밀번호를 입력하세요. (이름만 바꿀 때는 이름 옆 [저장])');
+          if ($('mpNew').value !== $('mpNew2').value) return modalErr('새 비밀번호 확인이 일치하지 않습니다.');
+          await api('changeMyPw', { cur: $('mpCur').value, pw: $('mpNew').value }); alert('비밀번호가 변경되었습니다.'); return true; } });
+      setTimeout(() => (focusPw ? $('mpCur') : $('myName')).focus(), 50);
     }
+    async function saveMyName() {
+      try { const name = await api('updateMyProfile', { name: $('myName').value }); state.me.name = name; closeModal(); renderApp(); alert('이름이 저장되었습니다.'); }
+      catch (e) { modalErr(e.message); }
+    }
+    function openMyPwModal() { openMyAccountModal(true); }
     function fillCurrentLocation() {
       $('admLocStatus').innerText = '현재 위치 측정 중...';
       if (!navigator.geolocation) return ($('admLocStatus').innerText = '이 브라우저는 위치 정보를 지원하지 않습니다.');
