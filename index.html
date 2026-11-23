@@ -170,6 +170,7 @@
         <div class="max-w-7xl mx-auto px-4 flex space-x-1 font-medium text-xs sm:text-sm whitespace-nowrap">
           <button onclick="setActiveTab('attendance')" id="tab-attendance" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="qr-code" class="w-4 h-4"></i> 출결 & 전체공지</button>
           <button onclick="setActiveTab('students')" id="tab-students" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> <span id="tabStudentsLabel">학생 명단</span></button>
+          <button onclick="setActiveTab('classes')" id="tab-classes" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="layout-grid" class="w-4 h-4"></i> <span id="tabClassesLabel">반 관리</span></button>
           <button onclick="setActiveTab('tasks')" id="tab-tasks" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="check-square" class="w-4 h-4"></i> 과제 ('다했니')</button>
           <button onclick="setActiveTab('roadmap')" id="tab-roadmap" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="target" class="w-4 h-4"></i> 취업 로드맵</button>
           <button onclick="setActiveTab('notices')" id="tab-notices" data-roles="admin,teacher,viewer,student" class="nav-tab py-2.5 px-3 border-b-2 flex items-center gap-1.5"><i data-lucide="bell" class="w-4 h-4"></i> 학과 공지 & 메모</button>
@@ -371,6 +372,24 @@
         <div id="myInfoView" class="hidden"></div>
       </div>
 
+      <!-- ===== 반 관리 (교사) / 내 반 (학생) ===== -->
+      <div id="sec-classes" class="tab-content hidden space-y-5">
+        <div id="classStaffView" class="space-y-5">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h2 class="font-bold text-slate-900 text-base flex items-center gap-2"><i data-lucide="layout-grid" class="w-5 h-5 text-indigo-600"></i> 반 관리</h2>
+                <p class="text-xs text-slate-500">전공심화반과 따로 운영하는 반(예: 방과후 남는 반)을 개설하고, 반마다 학생·출결 QR·시간·전달 사항을 따로 관리합니다.</p>
+              </div>
+              <button id="btnNewClass" onclick="openClassSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> 반 개설</button>
+            </div>
+            <div id="classList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+          </div>
+          <div id="classDetail" class="space-y-5"></div>
+        </div>
+        <div id="classStudentView" class="hidden space-y-5"></div>
+      </div>
+
       <!-- ===== 과제 ===== -->
       <div id="sec-tasks" class="tab-content hidden">
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -524,6 +543,27 @@
                   <li>내 줄에서 [내 관리자 권한 내려놓기] → 나는 일반 교사로 바뀝니다</li>
                 </ol>
                 <p class="text-slate-500">관리자는 항상 1명 이상 남아 있어야 합니다. 구글 시트·Apps Script의 주인(deco0627@gmail.com)은 따로 넘겨야 합니다 (구글 시트 [공유]에서 소유자 이전).</p>
+              </div>
+            </details>
+
+            <details class="border border-violet-200 bg-violet-50/30 rounded-xl">
+              <summary class="cursor-pointer px-4 py-3 font-bold text-violet-900">📚 반 개설 · 관리 (방과후 남는 반 등)</summary>
+              <div class="px-4 pb-4 space-y-2">
+                <p>전공심화반과 따로 운영하는 학생 묶음을 <b>반</b>으로 만들어, 반마다 <b>학생 · 출결 QR · 시간 · 운영일 · 전달 사항 · 통계</b>를 따로 관리합니다.</p>
+                <ol class="list-decimal pl-5 space-y-1">
+                  <li><b>[반 관리] 탭 → [반 개설]</b>: 반 이름, 출결 방식(입·퇴실 / 입실만), 요일별 시간을 정합니다. 만든 선생님이 담당 교사가 됩니다.</li>
+                  <li><b>학생 넣기</b>: [+ 기존 학생 추가]로 명단에서 고르거나, 전공심화반이 아닌 학생은 [+ 새 학생 등록]에서 <b>"이 반 전용"</b>으로 등록합니다.</li>
+                  <li><b>운영일 지정</b>: 반 화면 오른쪽 달력에서 [운영 요일 일괄 지정] → 쉬는 날은 눌러서 해제</li>
+                  <li><b>출결 QR 인쇄</b>: [🖨️ 출결 QR 인쇄] → 반마다 QR이 다르니 그 반 장소에 붙입니다.</li>
+                  <li><b>전달 사항</b>: [+ 전달 작성] → 그 반 학생과 담당 선생님만 봅니다.</li>
+                </ol>
+                <table class="w-full my-1">
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">관리할 수 있는 사람</td><td>그 반 <b>담당 교사</b>(여러 명 지정 가능, [👩‍🏫 담당 교사])와 전체 관리자. 전체 조회 선생님은 보기만</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">반 QR로 출석</td><td>그 반 학생만 가능. 다른 반·전공심화반 QR과 섞이지 않습니다</td></tr>
+                  <tr class="border-b border-slate-100 align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">"반 전용" 학생</td><td>전공심화반 명단·0교시/방과후 통계·가산점에 나오지 않습니다. 반 화면에서 PIN 초기화도 할 수 있습니다</td></tr>
+                  <tr class="align-top"><td class="py-1 pr-2 font-semibold whitespace-nowrap">학생 화면</td><td>[내 반] 탭에서 반 시간표·오늘 출결·전달 사항을 보고, [출결 & 전체공지] 탭의 내 출결 기록에도 반 출결이 같이 나옵니다</td></tr>
+                </table>
+                <p class="text-slate-500">반을 삭제하면 그 반의 출결 기록·전달 사항·운영일이 지워집니다 (학생 계정은 남음).</p>
               </div>
             </details>
 
@@ -778,6 +818,8 @@
       scan: '출석을 확인하는 중...', studentScan: '출석을 확인하는 중...', signup: '가입 신청을 보내는 중...',
       addUser: '선생님 계정을 만드는 중...', deleteUser: '계정을 삭제하는 중...', setUserRole: '권한을 바꾸는 중...', resetUserPw: '비밀번호를 바꾸는 중...',
       savePositions: '직책 목록을 저장하는 중...', updateMyProfile: '이름을 저장하는 중...',
+      createClass: '반을 개설하는 중...', updateClass: '반 정보를 저장하는 중...', deleteClass: '반과 출결 기록을 삭제하는 중...',
+      addClassNotice: '전달 사항을 보내는 중...', deleteClassNotice: '전달 사항을 삭제하는 중...', studentDirectory: '학생 목록을 불러오는 중...',
       addStudent: '학생을 등록하는 중...', updateStudent: '학생 정보를 저장하는 중...', changeStudentId: '학번을 바꾸고 출결 기록을 옮기는 중...',
       deleteStudent: '학생과 출결 기록을 삭제하는 중...', approveStudent: '가입 신청을 처리하는 중...', resetStudentCred: 'PIN·비밀번호를 바꾸는 중...',
       updateMyInfo: '내 정보를 저장하는 중...', changeMyCred: '비밀번호·PIN을 바꾸는 중...', changeMyPw: '비밀번호를 바꾸는 중...',
@@ -837,6 +879,7 @@
       state.zeroCfg = c.zeroCfg; state.afterCfg = c.afterCfg; state.activeDates = c.activeDates; state.lockedDates = c.lockedDates;
       state.schoolLocation = c.schoolLocation; state.testMode = !!c.testMode;
       if (c.siteUrl !== undefined) state.siteUrl = c.siteUrl;
+      if (c.classes) state.classes = c.classes;   // QR 화면(로그인 전)에서 반 이름·시간 표시용
       // 서버(Code.gs)가 새 버전이면 positions가 같이 옴 → 전체 조회 권한 사용 가능
       if (c.positions) { state.positions = c.positions; state.serverHasViewer = true; }
       $('demoPanel').classList.toggle('hidden', !state.testMode);
@@ -855,6 +898,9 @@
       d.attendance.forEach(addAtt);
       state.globalNotices = d.globalNotices; state.deptNotices = d.deptNotices; state.tasks = d.tasks; state.memos = d.memos;
       state.academicEvents = d.events; state.jobs = d.jobs; state.users = d.users;
+      state.serverHasClasses = Array.isArray(d.classes);   // 서버(Code.gs)가 반 기능이 있는 새 버전인지
+      state.classes = d.classes || []; state.classNotices = d.classNotices || []; state.teachers = d.teachers || [];
+      state.classes.forEach(c => { state.activeDates[c.id] = state.activeDates[c.id] || []; state.lockedDates[c.id] = state.lockedDates[c.id] || []; });
       state.liveAt = kstNow().time;
       if (!state.calYear) { const t = parseDate(todayStr()); state.calYear = t.getFullYear(); state.calMonth = t.getMonth() + 1; }
       renderApp();
@@ -872,10 +918,11 @@
     const isEditor = () => role() === 'admin' || role() === 'teacher';      // 수정할 수 있는 사람
     const viewAll = () => role() === 'admin' || role() === 'viewer';        // 모든 학과를 보는 사람
     function scopeDept() { return viewAll() ? (state.adminDept === 'ALL' ? null : state.adminDept) : me().dept; }
+    // 전공심화반 화면(명단·0교시/방과후 통계·로드맵 등)에 나오는 학생: '반 전용' 학생과 다른 학과 학생은 제외
     function visibleStudents(includePending = false) {
       if (role() === 'student') return [me()];
       const d = scopeDept();
-      return state.students.filter(s => (includePending || s.status === 'approved') && (!d || s.dept === d));
+      return state.students.filter(s => (includePending || s.status === 'approved') && s.major !== false && (!d || s.dept === d));
     }
     const canManage = s => role() === 'admin' || (role() === 'teacher' && s.dept === me().dept);
 
@@ -915,7 +962,7 @@
       try { applyConfig(await api('publicInfo', {}, { silent: true })); }
       catch (e) { $('configMsg').innerText = '서버 연결 실패: ' + e.message + '\n\nApps Script 배포 설정(액세스: 모든 사용자)과 API_URL을 확인하세요.'; showScreen('config'); return hideBigLoading(); }
       const p = new URLSearchParams(location.search);
-      if (p.get('qr')) { qrParams = { type: p.get('qr') === 'absent' ? 'absent' : 'attend', dept: p.get('d') || '' }; openQuickScreen(); return hideBigLoading(); }
+      if (p.get('qr')) { qrParams = { type: p.get('qr') === 'absent' ? 'absent' : 'attend', dept: p.get('d') || '', cls: p.get('c') || '' }; openQuickScreen(); return hideBigLoading(); }
       token = store.get();
       if (token) {
         setBigLoadingMsg('학생·출결 정보를 불러오는 중...');
@@ -927,7 +974,7 @@
     function startLiveClock() {
       setInterval(() => { const el = $('liveClockText'); if (el) el.innerText = state.testMode && $('simTime').value ? `${$('simTime').value} (시연)` : kstNow().sec; }, 1000);
       // 실시간 현황판 30초 자동 새로고침
-      setInterval(() => { if (token && isStaff() && state.activeTab === 'attendance' && !$('appScreen').classList.contains('hidden') && document.visibilityState === 'visible') refreshLive(false); }, 30000);
+      setInterval(() => { if (token && isStaff() && ['attendance', 'classes'].includes(state.activeTab) && !$('appScreen').classList.contains('hidden') && document.visibilityState === 'visible') refreshLive(false); }, 30000);
     }
     function onSimChange() {
       if (!$('appScreen').classList.contains('hidden') && state.me) renderApp();
@@ -990,22 +1037,28 @@
     // ===================================================================
     // SCHEDULE HELPERS
     // ===================================================================
+    // session: 'zero' / 'after' = 전공심화반, 그 외 = 개설한 반 id
+    const findClass = id => (state.classes || []).find(c => c.id === id);
+    const sessionLabel = ss => SESSION_LABEL[ss] || (findClass(ss) || {}).name || '(삭제된 반)';
     function getWindow(session, date) {
       if (session === 'zero') { const z = state.zeroCfg; return { inStart: z.inStart, inEnd: z.inEnd, lateUntil: z.lateUntil, twoScan: false, label: `${z.inStart}~${z.inEnd}` }; }
-      const a = state.afterCfg, d = a.days[dow(date)];
+      const a = session === 'after' ? state.afterCfg : findClass(session);
+      if (!a) return null;
+      const d = (a.days || {})[dow(date)];
       if (!d || !d.start || !d.end) return null;
-      const s = toMin(d.start), e = toMin(d.end);
-      return { inStart: fromMin(s - a.earlyMin), inEnd: d.start, lateUntil: fromMin(s + a.lateMin), outStart: fromMin(e - a.outBeforeMin), outEnd: fromMin(e + a.outAfterMin), twoScan: true, label: `${d.start}~${d.end} (${d.periods})` };
+      const s = toMin(d.start), e = toMin(d.end), n = v => Number(v) || 0, two = session === 'after' || a.mode !== 'one';
+      return { inStart: fromMin(Math.max(0, s - n(a.earlyMin))), inEnd: d.start, lateUntil: fromMin(s + n(a.lateMin)), outStart: fromMin(e - n(a.outBeforeMin)), outEnd: fromMin(e + n(a.outAfterMin)),
+        twoScan: two, label: `${d.start}~${d.end}${d.periods ? ` (${d.periods})` : ''}` };
     }
     const guessSession = () => toMin(nowHM()) < 12 * 60 ? 'zero' : 'after';
     const getRec = (date, ss, sid) => (state.attendance[date] && state.attendance[date][ss] && state.attendance[date][ss][sid]) || null;
     function calcStats(sid, period = 'month', session = 'all') {
       const today = todayStr(), prefix = period === 'month' ? today.slice(0, 7) : period === 'year' ? today.slice(0, 4) : '';
       let normal = 0, tardy = 0, excused = 0, unexcused = 0, counted = 0;
-      (session === 'all' ? ['zero', 'after'] : [session]).forEach(ss => {
-        state.activeDates[ss].filter(d => d <= today && d.startsWith(prefix)).forEach(d => {
+      (Array.isArray(session) ? session : session === 'all' ? ['zero', 'after'] : [session]).forEach(ss => {
+        (state.activeDates[ss] || []).filter(d => d <= today && d.startsWith(prefix)).forEach(d => {
           const r = getRec(d, ss, sid);
-          if (!r) { if (d < today || state.lockedDates[ss].includes(d)) { unexcused++; counted++; } return; }
+          if (!r) { if (d < today || (state.lockedDates[ss] || []).includes(d)) { unexcused++; counted++; } return; }
           counted++;
           if (r.status === '정상출석') normal++; else if (r.status === '지각') tardy++; else if (r.status === '사유불참') excused++; else if (r.status === '무단불참') unexcused++;
         });
@@ -1022,18 +1075,23 @@
     // ===================================================================
     // QUICK QR SCREEN
     // ===================================================================
+    // 반 QR(?c=반id)이면 그 반으로 고정, 아니면 전공심화반(0교시/방과후)
+    const quickClass = () => qrParams && qrParams.cls ? findClass(qrParams.cls) : null;
     function openQuickScreen() {
-      const dept = deptByCode(qrParams.dept), absent = qrParams.type === 'absent';
+      const dept = deptByCode(qrParams.dept), absent = qrParams.type === 'absent', cls = quickClass();
       $('qkBadge').className = `inline-block font-bold text-[11px] px-3 py-1 rounded-full ${absent ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`;
-      $('qkBadge').innerText = absent ? '교무실 불참 QR' : '교실 참석 QR';
+      $('qkBadge').innerText = cls ? (absent ? '반 불참 QR' : '반 참석 QR') : (absent ? '교무실 불참 QR' : '교실 참석 QR');
       $('qkTitle').innerText = absent ? '사유 불참 등록' : 'QR 간편 출석';
-      $('qkDept').innerText = `유한공업고등학교 ${dept ? dept.name + ' ' : ''}전공심화반`;
+      $('qkDept').innerText = cls ? `📚 ${cls.name}` : qrParams.cls ? '⚠️ 없는 반의 QR입니다 (반이 삭제되었을 수 있어요)' : `유한공업고등학교 ${dept ? dept.name + ' ' : ''}전공심화반`;
+      $('qkSession').parentElement.classList.toggle('hidden', !!qrParams.cls);
       $('qkAbsentBox').classList.toggle('hidden', !absent);
       $('qkSubmit').innerText = absent ? '불참 사유 제출' : '출석 인증하기';
       $('qkSubmit').className = `w-full ${absent ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold py-3.5 rounded-xl shadow text-sm disabled:opacity-50`;
       resetQuickCheck(); showScreen('quick'); measureDistance();
     }
     function updateQuickSession() {
+      const cls = quickClass();
+      if (cls) { const w = getWindow(cls.id, todayStr()); $('qkSessionHint').innerText = ''; $('qkDept').innerText = `📚 ${cls.name}` + (w ? ` · 오늘 ${w.label}` : ' · 오늘은 시간표가 없습니다'); return; }
       const ss = guessSession(); $('qkSession').value = ss;
       const win = getWindow(ss, todayStr());
       $('qkSessionHint').innerText = win ? `현재 ${nowHM()} 기준 자동 선택 · 오늘 ${SESSION_LABEL[ss]} ${win.label}` : `오늘은 ${SESSION_LABEL[ss]} 시간표가 없습니다.`;
@@ -1049,7 +1107,8 @@
       try {
         const p = await measureWithLoading();
         if (p.error) return show(false, '📍 ' + p.error);
-        const r = await api('scan', Object.assign({ sid, pin, type: qrParams.type, session: $('qkSession').value, qrDept: qrParams.dept, reason }, scanPayload(p)));
+        const session = qrParams.cls || $('qkSession').value;
+        const r = await api('scan', Object.assign({ sid, pin, type: qrParams.type, session, qrDept: qrParams.dept, qrClass: qrParams.cls || '', reason }, scanPayload(p)));
         show(r.ok, r.msg);
       } catch (e) { show(false, e.message); }
       finally { $('qkSubmit').disabled = false; }
@@ -1062,7 +1121,7 @@
       return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label class="lbl">학번 * <span class="font-normal text-slate-400">(학년·반·번호 4자리, 예: 3104)</span></label><input id="${p}Id" inputmode="numeric" maxlength="5" class="inp font-mono" placeholder="3104"></div>
         <div><label class="lbl">이름 *</label><input id="${p}Name" class="inp"></div>
-        <div><label class="lbl">학과 *</label><select id="${p}Dept" class="inp" ${o.lockDept ? 'disabled' : ''}>${DEPT_NAMES.map(d => `<option ${d === o.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">학과 *</label><select id="${p}Dept" class="inp" ${o.lockDept ? 'disabled' : ''}>${DEPT_NAMES.concat(o.allowOther ? ['기타'] : []).map(d => `<option ${d === o.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
         <div><label class="lbl">학년 *</label><select id="${p}Grade" class="inp"><option>1</option><option>2</option><option selected>3</option></select></div>
         <div><label class="lbl">연락처 ${o.optional ? '' : '*'}</label><input id="${p}Phone" inputmode="tel" class="inp font-mono" placeholder="010-0000-0000"></div>
         <div><label class="lbl">구글 이메일 ${o.optional ? '' : '*'}</label><input id="${p}Email" type="email" class="inp" placeholder="example@gmail.com"></div>
@@ -1127,11 +1186,14 @@
         + (showName ? `<span class="font-semibold">${esc(u.name)}</span>` : `<span class="text-slate-400">이름 설정 ✏️</span>`);
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('hidden', !b.dataset.roles.split(',').includes(r)));
       $('tabStudentsLabel').innerText = r === 'student' ? '내 정보' : '학생 명단 (엑셀 그리드)';
+      $('tabClassesLabel').innerText = r === 'student' ? `내 반 (${(state.classes || []).length})` : '반 관리';
+      if (r === 'student' && !(state.classes || []).length) $('tab-classes').classList.add('hidden');   // 소속 반이 없으면 탭 숨김
       document.querySelectorAll('.editor-only').forEach(el => el.classList.toggle('hidden', !isEditor()));
       if ($('tab-' + state.activeTab).classList.contains('hidden')) state.activeTab = 'attendance';
       setActiveTab(state.activeTab, true);
       renderNoticeStrip(); renderGlobalNotices(); renderGpsBadge(); renderAttendance(); renderStudentsTab();
       renderTasks(); renderRoadmap(); renderDeptNotices(); renderMemos(); renderAcademic(); renderNcs(); renderJobs();
+      renderClasses();
       if (r === 'admin') renderAdmin();
       icons();
     }
@@ -1202,7 +1264,8 @@
       try {
         const r = await api('today', { date: todayStr() }, { silent: !manual });
         state.attendance[r.date] = {}; r.rows.forEach(addAtt);
-        state.liveAt = r.now.time + (r.now.time.length === 5 ? '' : ''); renderLiveBoard(); renderTeacherAttTable();
+        state.liveAt = r.now.time; renderLiveBoard(); renderTeacherAttTable();
+        if (state.activeTab === 'classes') renderClasses();
       } catch (e) { if (manual) alert(e.message); }
     }
     function renderLiveBoard() {
@@ -1321,36 +1384,46 @@
     }
 
     // ---- 학생 출결 ----
+    // 학생 본인의 출결 구분: 전공심화반이면 0교시·방과후 + 소속 반들
+    function mySessions() { const s = me(); return (s.major !== false ? ['zero', 'after'] : []).concat((state.classes || []).map(c => c.id)); }
     function renderStudentAtt() {
-      const s = me(), today = todayStr(), st = calcStats(s.id, 'month'), sy = calcStats(s.id, 'year');
+      const s = me(), today = todayStr(), sessions = mySessions(), major = s.major !== false;
+      const st = calcStats(s.id, 'month', sessions), sy = calcStats(s.id, 'year');
       $('myAttRate').innerText = fmtRate(st.rate); $('myAttCount').innerText = `${st.normal}회`; $('myTardyCount').innerText = `${st.tardy}회`; $('myAbsentCount').innerText = `${st.excused + st.unexcused}회`;
       $('studentBonusBadge').innerText = `취업추천 가산점: +${sy.bonus}점`;
-      $('todayScheduleBox').innerHTML = ['zero', 'after'].map(ss => {
-        const active = state.activeDates[ss].includes(today), locked = state.lockedDates[ss].includes(today), win = getWindow(ss, today), r = getRec(today, ss, s.id);
+      $('studentBonusBadge').classList.toggle('hidden', !major);
+      $('todayScheduleBox').innerHTML = sessions.length ? sessions.map(ss => {
+        const active = (state.activeDates[ss] || []).includes(today), locked = (state.lockedDates[ss] || []).includes(today), win = getWindow(ss, today), r = getRec(today, ss, s.id);
         const badge = !active || !win ? '<span class="text-slate-400">미운영</span>' : locked ? '<span class="text-rose-600 font-bold">🔒 마감</span>' : r ? statusPill(win.twoScan && r.in && !r.out ? '입실완료' : r.status) : '<span class="text-slate-500">미등록</span>';
-        return `<div class="flex items-center justify-between border border-slate-200 rounded-xl p-3"><div><p class="font-bold text-slate-800">${SESSION_LABEL[ss]}</p><p class="text-[11px] text-slate-500">${win ? esc(win.label) : '오늘 시간표 없음'}</p></div>${badge}</div>`;
-      }).join('');
-      const open = ['zero', 'after'].some(ss => state.activeDates[ss].includes(today) && !state.lockedDates[ss].includes(today) && getWindow(ss, today));
+        return `<div class="flex items-center justify-between border ${SESSION_LABEL[ss] ? 'border-slate-200' : 'border-violet-200 bg-violet-50/40'} rounded-xl p-3"><div><p class="font-bold text-slate-800">${SESSION_LABEL[ss] ? '' : '📚 '}${esc(sessionLabel(ss))}</p><p class="text-[11px] text-slate-500">${win ? esc(win.label) : '오늘 시간표 없음'}</p></div>${badge}</div>`;
+      }).join('') : '<p class="text-slate-400">소속된 반이 없습니다.</p>';
+      const open = sessions.some(ss => (state.activeDates[ss] || []).includes(today) && !(state.lockedDates[ss] || []).includes(today) && getWindow(ss, today));
       const w = $('studentLockWarning');
       w.className = `rounded-xl p-3 text-xs ${open ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-50 border border-slate-200 text-slate-500'}`;
       w.innerHTML = (open ? '✅ 오늘 출결 등록 가능합니다.' : '📅 오늘은 등록 가능한 출결이 없습니다.') + (s.initialCred ? `<br><button onclick="setActiveTab('students')" class="underline text-rose-600 font-bold mt-1">🔐 초기 비밀번호/PIN 변경하기</button>` : '');
-      const rows = []; ['zero', 'after'].forEach(ss => state.activeDates[ss].filter(d => d <= today).forEach(d => rows.push([d, ss])));
-      rows.sort((a, b) => b[0].localeCompare(a[0]) || (a[1] === 'zero' ? -1 : 1));
-      $('studentAttLogsBody').innerHTML = rows.length ? rows.slice(0, 30).map(([d, ss]) => {
-        const r = getRec(d, ss, s.id), locked = state.lockedDates[ss].includes(d);
-        const stt = r ? (ss === 'after' && d === today && r.in && !r.out && r.status !== '사유불참' ? '입실완료' : r.status) : (d < today || locked) ? '무단불참' : '미등록';
+      const rows = []; sessions.forEach(ss => (state.activeDates[ss] || []).filter(d => d <= today).forEach(d => rows.push([d, ss])));
+      const order = ss => ss === 'zero' ? 0 : ss === 'after' ? 1 : 2;
+      rows.sort((a, b) => b[0].localeCompare(a[0]) || order(a[1]) - order(b[1]));
+      $('studentAttLogsBody').innerHTML = rows.length ? rows.slice(0, 40).map(([d, ss]) => {
+        const r = getRec(d, ss, s.id), locked = (state.lockedDates[ss] || []).includes(d), win = getWindow(ss, d);
+        const stt = r ? (win && win.twoScan && d === today && r.in && !r.out && r.status !== '사유불참' ? '입실완료' : r.status) : (d < today || locked) ? '무단불참' : '미등록';
         const note = [r && r.reason, r && r.editedBy ? '교사 수정' : '', locked ? '🔒' : ''].filter(Boolean).join(' · ');
-        return `<tr><td class="p-2.5 font-mono whitespace-nowrap">${d.slice(5)} (${WEEK[dow(d)]})</td><td class="p-2.5">${SESSION_LABEL[ss]}</td><td class="p-2.5 font-mono">${esc(r && r.in || '-')}</td><td class="p-2.5 font-mono">${esc(r && r.out || '-')}</td>
+        return `<tr><td class="p-2.5 font-mono whitespace-nowrap">${d.slice(5)} (${WEEK[dow(d)]})</td><td class="p-2.5">${esc(sessionLabel(ss))}</td><td class="p-2.5 font-mono">${esc(r && r.in || '-')}</td><td class="p-2.5 font-mono">${esc(r && r.out || '-')}</td>
           <td class="p-2.5">${statusPill(stt)}</td><td class="p-2.5 font-mono">${r && r.dist != null ? r.dist + 'm' : '-'}</td><td class="p-2.5 text-slate-500">${esc(note) || '-'}</td></tr>`;
       }).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">출결 기록이 없습니다.</td></tr>';
     }
-    function studentScan(type) {
-      const ss = guessSession();
-      const sel = `<div><label class="lbl">운영 구분</label><select id="scSession" class="inp"><option value="zero" ${ss === 'zero' ? 'selected' : ''}>0교시</option><option value="after" ${ss === 'after' ? 'selected' : ''}>방과후</option></select></div>`;
+    // fixed: 반 카드에서 누르면 그 반으로 고정
+    function studentScan(type, fixed) {
+      const sessions = mySessions();
+      if (!sessions.length) return alert('소속된 반이 없습니다. 담당 선생님께 문의하세요.');
+      const guess = fixed || (sessions.includes(guessSession()) ? guessSession() : sessions[0]);
+      const sel = `<div class="${fixed ? 'hidden' : ''}"><label class="lbl">운영 구분</label><select id="scSession" class="inp">${sessions.map(ss => `<option value="${ss}" ${ss === guess ? 'selected' : ''}>${esc(sessionLabel(ss))}</option>`).join('')}</select></div>`
+        + (fixed ? `<p class="text-center font-bold text-violet-700">📚 ${esc(sessionLabel(fixed))}</p>` : '');
       const run = async reason => {
         const p = await measureWithLoading();
         if (p.error) return modalErr('📍 ' + p.error);
-        const r = await api('studentScan', Object.assign({ type, session: $('scSession').value, qrDept: codeOf(me().dept), reason }, scanPayload(p)));
+        const session = $('scSession').value, isClass = !SESSION_LABEL[session];
+        const r = await api('studentScan', Object.assign({ type, session, qrDept: isClass ? '' : codeOf(me().dept), qrClass: isClass ? session : '', reason }, scanPayload(p)));
         if (!r.ok) return modalErr(r.msg);
         closeModal(); await refresh(); alert(r.msg); return true;
       };
@@ -1369,14 +1442,25 @@
       if (scopeDept()) $('qrDeptSelect').value = codeOf(scopeDept());
       showModal('printableQrModal'); renderPrintableQr();
     }
+    // 개설한 반의 QR: 선택 칸 값을 'c:반id' 로 넣어서 같은 인쇄 화면을 씀
+    function openClassQr(cid) {
+      const c = findClass(cid); if (!c) return;
+      $('qrDeptSelect').innerHTML = `<option value="c:${c.id}">📚 ${esc(c.name)}</option>`;
+      showModal('printableQrModal'); renderPrintableQr();
+    }
     function renderPrintableQr() {
-      const code = $('qrDeptSelect').value, dept = deptByCode(code), base = qrBaseUrl();
-      const urlA = `${base}?qr=attend&d=${code}`, urlB = `${base}?qr=absent&d=${code}`;
+      const code = $('qrDeptSelect').value, base = qrBaseUrl(), cls = code.startsWith('c:') ? findClass(code.slice(2)) : null;
+      const q = cls ? `c=${cls.id}` : `d=${code}`;
+      const urlA = `${base}?qr=attend&${q}`, urlB = `${base}?qr=absent&${q}`;
       const bad = !/^https:\/\//i.test(base);
       $('qrUrlWarning').classList.toggle('hidden', !bad);
       $('qrUrlWarning').innerHTML = `⚠️ QR 주소가 <b class="font-mono break-all">${esc(base)}</b> 입니다. https 주소(GitHub Pages)에서 열어야 학생 휴대폰에서 동작합니다.`;
-      document.querySelectorAll('.qr-dept-label').forEach(el => el.innerText = dept.name);
+      document.querySelectorAll('.qr-dept-label').forEach(el => el.innerText = cls ? `📚 ${cls.name}` : deptByCode(code).name);
       const z = state.zeroCfg;
+      if (cls) {
+        const times = [1, 2, 3, 4, 5, 6].filter(k => cls.days && cls.days[k]).map(k => `${WEEK[k]} ${cls.days[k].start}~${cls.days[k].end}`).join(', ');
+        $('printableClassroomDesc').innerHTML = `휴대폰 카메라로 스캔 → <b>학번 + PIN 4자리</b><br>${esc(times) || '시간 미설정'}<br>${cls.mode === 'one' ? '입실 때 한 번 스캔' : '시작 전 입실 · 종료 후 퇴실 스캔'}`;
+      } else
       $('printableClassroomDesc').innerHTML = `휴대폰 카메라로 스캔 → <b>학번 + PIN 4자리</b><br>0교시: <b>${z.inStart}~${z.inEnd}</b> 입실<br>방과후: 시작 전 입실 · 종료 후 퇴실 스캔`;
       $('testLinkAttend').href = urlA; $('testLinkAbsent').href = urlB;
       [['printableClassroomQr', urlA], ['printableOfficeQr', urlB]].forEach(([id, text]) => {
@@ -1768,6 +1852,282 @@
       const on = !state.testMode;
       if (on && !confirm('테스트 모드를 켤까요?\n켜져 있는 동안은 가짜 위치·시각으로 출석할 수 있습니다. 시험이 끝나면 꼭 끄세요.')) return;
       act('setTestMode', { on }, on ? '🧪 테스트 모드를 켰습니다. 오른쪽 아래 [시연 설정]을 사용하세요.' : '테스트 모드를 껐습니다. 이제 실제 GPS·실제 시각으로만 출석됩니다.');
+    }
+
+    // ===================================================================
+    // 반 관리 (개설한 반: 학생·출결 QR·시간·운영일·전달 사항을 반마다 따로)
+    // ===================================================================
+    const DAY_KEYS = [1, 2, 3, 4, 5, 6];   // 월~토
+    const isClassManager = c => role() === 'admin' || (role() === 'teacher' && (c.managers || []).includes(me().email));
+    const teacherName = email => { const t = (state.teachers || []).find(x => x.email === email); return t ? t.name : email; };
+    const classTimes = c => DAY_KEYS.filter(k => c.days && c.days[k]).map(k => `${WEEK[k]} ${c.days[k].start}~${c.days[k].end}`).join(' · ') || '시간 미설정';
+    function classMembers(c) {
+      const ids = c.members || [];
+      return ids.map(id => state.students.find(s => s.id === id) || { id, name: '(정보 없음)', dept: '', grade: 0, major: true, missing: true })
+        .sort((a, b) => a.id.localeCompare(b.id));
+    }
+
+    function renderClasses() {
+      const student = role() === 'student';
+      $('classStaffView').classList.toggle('hidden', student);
+      $('classStudentView').classList.toggle('hidden', !student);
+      if (student) return renderMyClasses();
+      $('btnNewClass').classList.toggle('hidden', !isEditor());
+      const list = state.classes || [], today = todayStr();
+      if (state.selClass && !findClass(state.selClass)) state.selClass = null;
+      $('classList').innerHTML = list.length ? list.map(c => {
+        const members = c.members || [], active = (state.activeDates[c.id] || []).includes(today);
+        const done = active ? members.filter(id => getRec(today, c.id, id)).length : 0;
+        const sel = state.selClass === c.id;
+        return `<button onclick="state.selClass='${c.id}';renderClassDetail();document.getElementById('classDetail').scrollIntoView({behavior:'smooth'})"
+          class="text-left border-2 ${sel ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-violet-300 bg-white'} rounded-xl p-3 text-xs space-y-1">
+          <div class="flex items-center justify-between gap-2"><p class="font-bold text-sm text-slate-900 truncate">📚 ${esc(c.name)}</p>
+            <span class="text-[11px] ${active ? 'text-emerald-700 bg-emerald-100' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">${active ? `오늘 ${done}/${members.length}` : '오늘 미운영'}</span></div>
+          ${c.desc ? `<p class="text-slate-500 truncate">${esc(c.desc)}</p>` : ''}
+          <p class="text-slate-500">👥 ${members.length}명 · 🕒 ${esc(classTimes(c))}</p>
+          <p class="text-slate-400 truncate">담당: ${esc((c.managers || []).map(teacherName).join(', ') || '-')}</p></button>`;
+      }).join('') : `<p class="col-span-full text-xs text-slate-400 py-4 text-center">아직 개설한 반이 없습니다.${isEditor() ? ' 오른쪽 위 [반 개설]을 눌러 만들어 보세요.' : ''}</p>`;
+      renderClassDetail();
+    }
+
+    function renderClassDetail() {
+      const box = $('classDetail'), c = state.selClass && findClass(state.selClass);
+      document.querySelectorAll('#classList > button').forEach(b => b.classList.toggle('border-violet-500', !!c && b.getAttribute('onclick').includes(`'${c.id}'`)));
+      if (!c) { box.innerHTML = (state.classes || []).length ? '<p class="text-xs text-slate-400 text-center py-2">위에서 반을 고르면 학생·출결·전달 사항을 관리할 수 있습니다.</p>' : ''; return; }
+      const mgr = isClassManager(c), today = todayStr(), members = classMembers(c);
+      if (!state.clsCalY) { const t = parseDate(today); state.clsCalY = t.getFullYear(); state.clsCalM = t.getMonth() + 1; }
+      const card = (title, body, right = '') => `<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200"><div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3"><h3 class="font-bold text-slate-900 text-sm">${title}</h3><div class="flex flex-wrap gap-2 text-xs">${right}</div></div>${body}</div>`;
+      const btn = (label, onclick, cls = 'bg-slate-100 hover:bg-slate-200 text-slate-700') => `<button onclick="${onclick}" class="${cls} rounded-lg px-2.5 py-1.5 font-semibold">${label}</button>`;
+
+      // 1) 반 정보
+      const head = `<div class="bg-gradient-to-r from-violet-700 to-indigo-800 text-white rounded-2xl p-5 shadow-lg">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0"><p class="text-xs text-violet-200">개설한 반</p><h2 class="text-xl font-extrabold">📚 ${esc(c.name)}</h2>
+            ${c.desc ? `<p class="text-sm text-violet-100 mt-0.5">${esc(c.desc)}</p>` : ''}
+            <p class="text-xs text-violet-200 mt-2">🕒 ${esc(classTimes(c))} · ${c.mode === 'one' ? '입실만 스캔' : '입실·퇴실 2번 스캔'}</p>
+            <p class="text-xs text-violet-200">👩‍🏫 담당: ${esc((c.managers || []).map(teacherName).join(', ') || '-')} · 개설 ${esc(c.createdAt || '')} ${esc(c.createdBy || '')}</p></div>
+          <div class="flex flex-wrap gap-2 text-xs">
+            ${btn('🖨️ 출결 QR 인쇄', `openClassQr('${c.id}')`, 'bg-white text-violet-800 hover:bg-violet-50')}
+            ${mgr ? btn('⚙️ 반 설정', `openClassSettings('${c.id}')`, 'bg-white/15 hover:bg-white/25 text-white') + btn('👩‍🏫 담당 교사', `openClassManagers('${c.id}')`, 'bg-white/15 hover:bg-white/25 text-white') + btn('🗑️ 반 삭제', `deleteClassUI('${c.id}')`, 'bg-rose-500/80 hover:bg-rose-500 text-white') : ''}
+          </div></div></div>`;
+
+      // 2) 오늘 실시간 현황
+      const active = (state.activeDates[c.id] || []).includes(today), win = getWindow(c.id, today);
+      let live;
+      if (!active || !win) live = `<p class="text-xs text-slate-400 text-center py-3">오늘(${today.slice(5)} ${WEEK[dow(today)]})은 운영일이 아니거나 시간표가 없습니다.${mgr ? ' 아래 달력에서 운영일을 지정하세요.' : ''}</p>`;
+      else {
+        const cnt = { '정상출석': 0, '지각': 0, '사유불참': 0, '무단불참': 0, '미등록': 0 };
+        const tiles = members.map(s => {
+          const r = getRec(today, c.id, s.id), st = r ? r.status : '미등록'; cnt[st]++;
+          const color = { '정상출석': 'border-emerald-300 bg-emerald-50', '지각': 'border-amber-300 bg-amber-50', '사유불참': 'border-blue-300 bg-blue-50', '무단불참': 'border-rose-300 bg-rose-50', '미등록': 'border-slate-200 bg-white' }[st];
+          const icon = { '정상출석': '✅', '지각': '⚠️', '사유불참': '📝', '무단불참': '❌', '미등록': '⬜' }[st];
+          const time = r ? (r.in || '') + (win.twoScan && r.in ? (r.out ? ` → ${r.out}` : ' (수업 중)') : '') : '';
+          return { st, html: `<div class="border ${color} rounded-xl p-2 text-xs" title="${esc(r && r.reason || '')}"><div class="flex items-center justify-between"><b class="truncate">${esc(s.name)}</b><span>${icon}</span></div><div class="text-[10px] text-slate-500 font-mono">${esc(s.id)} ${esc(time)}</div></div>` };
+        }).sort((a, b) => (a.st === '미등록' ? -1 : 0) - (b.st === '미등록' ? -1 : 0));
+        const cbox = (l, n, cls) => `<div class="${cls} rounded-xl p-2 text-center"><p class="text-[11px] font-semibold">${l}</p><p class="text-lg font-extrabold">${n}</p></div>`;
+        live = `<div class="grid grid-cols-5 gap-2 mb-3">${cbox('✅ 출석', cnt['정상출석'], 'bg-emerald-50 text-emerald-800')}${cbox('⚠️ 지각', cnt['지각'], 'bg-amber-50 text-amber-800')}${cbox('📝 사유', cnt['사유불참'], 'bg-blue-50 text-blue-800')}${cbox('❌ 무단', cnt['무단불참'], 'bg-rose-50 text-rose-800')}${cbox('⬜ 미등록', cnt['미등록'], 'bg-slate-100 text-slate-700')}</div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">${tiles.map(t => t.html).join('') || '<p class="col-span-full text-xs text-slate-400">학생이 없습니다.</p>'}</div>`;
+      }
+
+      // 3) 운영일 달력
+      const y = state.clsCalY, m = state.clsCalM, first = new Date(y, m - 1, 1).getDay(), dim = new Date(y, m, 0).getDate();
+      let cal = '<div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 mb-1">' + WEEK.map(w => `<div>${w}</div>`).join('') + '</div><div class="grid grid-cols-7 gap-1">';
+      for (let i = 0; i < first; i++) cal += '<div></div>';
+      for (let day = 1; day <= dim; day++) {
+        const ds = `${y}-${pad(m)}-${pad(day)}`, on = (state.activeDates[c.id] || []).includes(ds), lk = (state.lockedDates[c.id] || []).includes(ds);
+        cal += `<div ${mgr ? `onclick="toggleClassDate('${c.id}','${ds}')"` : ''} class="p-1 rounded-lg border text-center text-[11px] ${mgr ? 'cursor-pointer' : ''} ${lk ? 'bg-rose-50 border-rose-200 text-rose-800' : on ? 'bg-violet-50 border-violet-200 text-violet-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'} ${ds === today ? 'ring-2 ring-amber-400' : ''}">
+          <div class="flex items-center justify-between"><span class="font-mono">${day}</span>${mgr ? `<button onclick="toggleClassLock('${c.id}','${ds}',event)" class="text-[9px]">${lk ? '🔒' : '🔓'}</button>` : lk ? '🔒' : ''}</div><div class="text-[9px]">${lk ? '마감' : on ? '운영' : '-'}</div></div>`;
+      }
+      cal += '</div>';
+      const calNav = btn('◀', `shiftClassCal(-1)`) + `<span class="font-bold text-slate-700 px-1 py-1.5">${y}년 ${m}월</span>` + btn('▶', `shiftClassCal(1)`)
+        + (mgr ? btn('운영 요일 일괄 지정', `fillClassMonth('${c.id}')`, 'bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200') : '');
+
+      // 4) 학생 & 출결 통계
+      const period = state.clsPeriod || 'month';
+      const rows = members.map(s => {
+        const st = calcStats(s.id, period, c.id), rc = st.rate === null ? 'text-slate-400' : st.rate >= 90 ? 'text-emerald-600' : st.rate >= 80 ? 'text-amber-600' : 'text-rose-600';
+        const tag = s.missing ? '<span class="text-rose-500">삭제됨</span>' : s.major === false ? '<span class="bg-violet-100 text-violet-700 px-1.5 rounded font-semibold">반 전용</span>' : '<span class="bg-indigo-50 text-indigo-600 px-1.5 rounded">전공심화반</span>';
+        const acts = mgr ? `<button onclick="manageClassAtt('${c.id}','${s.id}')" class="text-indigo-600 font-semibold">기록 수정</button>`
+          + (s.major === false && !s.missing ? `<button onclick="resetStudentCred('${s.id}')" class="text-slate-600 font-semibold">PIN/비번</button>` : '')
+          + `<button onclick="removeClassMember('${c.id}','${s.id}')" class="text-rose-500 font-semibold">반에서 빼기</button>` : '-';
+        return `<tr class="hover:bg-slate-50"><td class="p-2 font-mono text-slate-500">${esc(s.id)}</td><td class="p-2 font-bold">${esc(s.name)} ${s.major === false && s.initialCred ? '🔐' : ''}</td><td class="p-2">${esc(s.dept)} ${s.grade ? s.grade + '학년' : ''} ${tag}</td>
+          <td class="p-2 font-mono">${st.total}</td><td class="p-2 font-mono text-emerald-700">${st.normal}</td><td class="p-2 font-mono text-amber-700">${st.tardy}</td><td class="p-2 font-mono text-blue-700">${st.excused}</td><td class="p-2 font-mono text-rose-700">${st.unexcused}</td>
+          <td class="p-2 font-bold ${rc}">${fmtRate(st.rate)}</td><td class="p-2"><div class="flex flex-wrap gap-2">${acts}</div></td></tr>`;
+      }).join('');
+      const memberBtns = `<select onchange="state.clsPeriod=this.value;renderClassDetail()" class="border border-slate-300 rounded-lg px-2 py-1.5"><option value="month" ${period === 'month' ? 'selected' : ''}>이번 달</option><option value="year" ${period === 'year' ? 'selected' : ''}>올해 전체</option></select>`
+        + btn('엑셀 CSV', `exportClassCSV('${c.id}')`, 'bg-emerald-600 hover:bg-emerald-700 text-white')
+        + (mgr ? btn('+ 기존 학생 추가', `openClassMemberPicker('${c.id}')`, 'bg-indigo-600 hover:bg-indigo-700 text-white') + btn('+ 새 학생 등록', `openClassNewStudent('${c.id}')`, 'bg-violet-600 hover:bg-violet-700 text-white') : '');
+      const table = `<div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse"><thead><tr class="bg-slate-100 text-slate-700"><th class="p-2">학번</th><th class="p-2">이름</th><th class="p-2">학과·소속</th><th class="p-2">운영일</th><th class="p-2">정상</th><th class="p-2">지각</th><th class="p-2">사유</th><th class="p-2">무단</th><th class="p-2">출석률</th><th class="p-2">관리</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">${rows || '<tr><td colspan="10" class="p-4 text-center text-slate-400">아직 학생이 없습니다. [+ 기존 학생 추가] 또는 [+ 새 학생 등록]으로 넣으세요.</td></tr>'}</tbody></table></div>
+        <p class="text-[11px] text-slate-400 mt-2">"반 전용" 학생은 전공심화반이 아닌 학생으로, 전공심화반 명단·통계에는 나오지 않고 이 반에서만 관리합니다.</p>`;
+
+      // 5) 전달 사항
+      const notes = (state.classNotices || []).filter(n => n.classId === c.id).sort((a, b) => String(b.date).localeCompare(String(a.date)) || Number(b.id) - Number(a.id));
+      const noteHtml = notes.length ? notes.map(n => `<div class="border border-slate-200 rounded-xl p-3 text-xs"><div class="flex items-center justify-between gap-2"><p class="font-bold text-slate-900">${esc(n.title)}</p>
+        <div class="flex items-center gap-2 text-slate-400 whitespace-nowrap"><span class="font-mono">${esc(n.date)}</span><span>${esc(n.author)}</span>${mgr ? `<button onclick="if(confirm('이 전달 사항을 삭제할까요?')) act('deleteClassNotice',{id:'${esc(n.id)}'})" class="text-rose-500">삭제</button>` : ''}</div></div>
+        <p class="text-slate-700 mt-1 whitespace-pre-line leading-relaxed">${esc(n.content)}</p></div>`).join('') : '<p class="text-xs text-slate-400">전달 사항이 없습니다.</p>';
+
+      box.innerHTML = head
+        + card(`📊 오늘 실시간 출결 <span class="font-normal text-xs text-slate-400">${today.slice(5)} (${WEEK[dow(today)]}) ${win ? '· ' + esc(win.label) : ''}</span>`, live, btn('↻ 새로고침', 'refreshLive(true).then(renderClassDetail)'))
+        + `<div class="grid grid-cols-1 lg:grid-cols-5 gap-5"><div class="lg:col-span-3">${card(`👥 반 학생 & 출결 통계 <span class="font-normal text-xs text-slate-400">${members.length}명</span>`, table, memberBtns)}</div>
+           <div class="lg:col-span-2 space-y-5">${card('📅 운영일', cal + `<p class="text-[11px] text-slate-400 mt-2">${mgr ? '날짜 클릭 = 운영/미운영, 🔓 = 일 마감' : '운영일·마감은 담당 선생님이 지정합니다.'}</p>`, calNav)}
+           ${card('📢 전달 사항 <span class="font-normal text-xs text-slate-400">(이 반 학생·담당 선생님만 봄)</span>', `<div class="space-y-2">${noteHtml}</div>`, mgr ? btn('+ 전달 작성', `openClassNotice('${c.id}')`, 'bg-violet-600 hover:bg-violet-700 text-white') : '')}</div></div>`;
+      icons();
+    }
+
+    // ---- 반 개설 / 설정 ----
+    function openClassSettings(cid) {
+      if (!state.serverHasClasses) return alert('반 기능을 쓰려면 먼저 서버(Apps Script)를 새 버전으로 배포해야 합니다.\n[관리자 사용 설명서 → 프로그램 고쳤을 때] 참고');
+      const c = cid ? findClass(cid) : { name: '', desc: '', mode: 'two', days: { 1: { start: '18:00', end: '20:00' }, 2: { start: '18:00', end: '20:00' }, 3: { start: '18:00', end: '20:00' }, 4: { start: '18:00', end: '20:00' }, 5: { start: '18:00', end: '20:00' } }, earlyMin: 20, lateMin: 30, outBeforeMin: 10, outAfterMin: 30 };
+      const dayRows = DAY_KEYS.map(k => { const d = (c.days || {})[k];
+        return `<tr><td class="py-1 pr-2"><label class="flex items-center gap-1 font-bold"><input type="checkbox" id="csOn${k}" ${d ? 'checked' : ''} onchange="csDay(${k})"> ${WEEK[k]}</label></td>
+          <td class="py-1 pr-1"><input type="time" id="csS${k}" value="${d ? d.start : '18:00'}" class="inp font-mono !p-1.5" ${d ? '' : 'disabled'}></td>
+          <td class="py-1"><input type="time" id="csE${k}" value="${d ? d.end : '20:00'}" class="inp font-mono !p-1.5" ${d ? '' : 'disabled'}></td></tr>`; }).join('');
+      openModal(cid ? `⚙️ ${c.name} 설정` : '📚 반 개설', `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="lbl">반 이름 *</label><input id="csName" class="inp" value="${esc(c.name)}" placeholder="예: 방과후 자율학습반"></div>
+          <div><label class="lbl">출결 방식</label><select id="csMode" class="inp"><option value="two" ${c.mode !== 'one' ? 'selected' : ''}>입실·퇴실 (2번 스캔)</option><option value="one" ${c.mode === 'one' ? 'selected' : ''}>입실만 (1번 스캔)</option></select></div>
+          <div class="sm:col-span-2"><label class="lbl">설명 (선택)</label><input id="csDesc" class="inp" value="${esc(c.desc || '')}" placeholder="예: 방과후에 남아서 공부하는 학생 / 3층 자습실"></div>
+        </div>
+        <div><p class="lbl">요일별 시간 <span class="font-normal text-slate-400">(체크한 요일만 운영)</span></p>
+          <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th></tr></thead><tbody>${dayRows}</tbody></table></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">입실 가능 (시작 n분 전)</label><input type="number" min="0" id="csEarly" class="inp font-mono" value="${c.earlyMin}"></div>
+          <div><label class="lbl">지각 인정 (시작 후 n분)</label><input type="number" min="0" id="csLate" class="inp font-mono" value="${c.lateMin}"></div>
+          <div><label class="lbl">퇴실 가능 (종료 n분 전)</label><input type="number" min="0" id="csOutB" class="inp font-mono" value="${c.outBeforeMin}"></div>
+          <div><label class="lbl">퇴실 마감 (종료 후 n분)</label><input type="number" min="0" id="csOutA" class="inp font-mono" value="${c.outAfterMin}"></div>
+        </div>
+        ${cid ? '' : '<p class="text-[11px] text-slate-500 bg-violet-50 border border-violet-200 rounded-lg p-2">만든 뒤 반 화면에서 ① 학생 추가 → ② 운영일 지정 → ③ 출결 QR 인쇄 순서로 진행하세요. 반을 만든 선생님이 담당 교사가 됩니다.</p>'}`,
+        { wide: true, okText: cid ? '저장' : '반 개설', onOk: async () => {
+          const days = {}; DAY_KEYS.forEach(k => { if ($('csOn' + k).checked) days[k] = { start: $('csS' + k).value, end: $('csE' + k).value }; });
+          if (!Object.keys(days).length) return modalErr('운영할 요일을 1개 이상 고르세요.');
+          const settings = { name: $('csName').value, desc: $('csDesc').value, mode: $('csMode').value, days, earlyMin: $('csEarly').value, lateMin: $('csLate').value, outBeforeMin: $('csOutB').value, outAfterMin: $('csOutA').value };
+          const res = cid ? await api('updateClass', { id: cid, settings }) : await api('createClass', settings);
+          closeModal(); state.selClass = res.id; await refresh();
+          if (!cid) alert(`📚 '${res.name}' 반을 개설했습니다.\n이제 학생을 추가하고, 운영일을 지정한 뒤, 출결 QR을 인쇄하세요.`);
+          return true; } });
+    }
+    function csDay(k) { const on = $('csOn' + k).checked; $('csS' + k).disabled = !on; $('csE' + k).disabled = !on; }
+
+    function openClassManagers(cid) {
+      const c = findClass(cid), list = (state.teachers || []).slice().sort((a, b) => String(a.dept).localeCompare(String(b.dept)) || a.name.localeCompare(b.name));
+      openModal(`👩‍🏫 ${c.name} 담당 교사`, `<p class="text-slate-500">담당 교사는 이 반의 학생·출결·운영일·전달 사항을 관리할 수 있습니다. 전체 관리자는 항상 관리할 수 있습니다.</p>
+        <div class="max-h-72 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">${list.map(t => `<label class="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
+          <input type="checkbox" class="cm-chk" value="${esc(t.email)}" ${(c.managers || []).includes(t.email) ? 'checked' : ''}><b>${esc(t.name)}</b><span class="text-slate-400">${t.role === 'admin' ? '전체 관리자' : esc(t.dept)}</span></label>`).join('')}</div>`,
+        { onOk: () => { const managers = [...document.querySelectorAll('.cm-chk:checked')].map(x => x.value); if (!managers.length) return modalErr('담당 교사를 1명 이상 고르세요.'); return modalAct('updateClass', { id: cid, managers }, '담당 교사를 저장했습니다.'); } });
+    }
+    function deleteClassUI(cid) {
+      const c = findClass(cid);
+      if (!confirm(`'${c.name}' 반을 삭제할까요?\n\n반의 출결 기록·전달 사항·운영일이 모두 지워집니다. (학생 계정은 남습니다)`)) return;
+      if (prompt(`정말 삭제하려면 반 이름 '${c.name}'을(를) 그대로 입력하세요.`) !== c.name) return alert('반 이름이 달라서 삭제하지 않았습니다.');
+      state.selClass = null; act('deleteClass', { id: cid }, '반을 삭제했습니다.');
+    }
+
+    // ---- 운영일 ----
+    function shiftClassCal(delta) { state.clsCalM += delta; if (state.clsCalM < 1) { state.clsCalM = 12; state.clsCalY--; } if (state.clsCalM > 12) { state.clsCalM = 1; state.clsCalY++; } renderClassDetail(); }
+    function toggleClassDate(cid, ds) {
+      if ((state.lockedDates[cid] || []).includes(ds)) return alert('🔒 마감된 날짜입니다. 잠금을 먼저 해제하세요.');
+      const on = !(state.activeDates[cid] || []).includes(ds);
+      act('setDates', { kind: 'active', session: cid, add: on ? [ds] : [], remove: on ? [] : [ds] });
+    }
+    function toggleClassLock(cid, ds, e) {
+      e.stopPropagation();
+      const locked = (state.lockedDates[cid] || []).includes(ds);
+      if (!locked && !confirm(`[${ds}] 마감할까요?\n학생 등록이 막히고, 기록 없는 학생은 무단불참으로 집계됩니다.`)) return;
+      act('setDates', { kind: 'locked', session: cid, add: locked ? [] : [ds], remove: locked ? [ds] : [] });
+    }
+    function fillClassMonth(cid) {
+      const c = findClass(cid), y = state.clsCalY, m = state.clsCalM, dim = new Date(y, m, 0).getDate(), add = [];
+      for (let d = 1; d <= dim; d++) { const ds = `${y}-${pad(m)}-${pad(d)}`; if (c.days && c.days[dow(ds)]) add.push(ds); }
+      if (!add.length) return alert('반 설정에 운영 요일이 없습니다. [반 설정]에서 요일을 먼저 고르세요.');
+      if (!confirm(`${y}년 ${m}월에서 운영 요일(${classTimes(c)})에 해당하는 ${add.length}일을 운영일로 지정할까요?\n공휴일·시험일은 나중에 날짜를 눌러 해제하세요.`)) return;
+      act('setDates', { kind: 'active', session: cid, add });
+    }
+
+    // ---- 학생 ----
+    async function openClassMemberPicker(cid) {
+      const c = findClass(cid);
+      let dir;
+      try { dir = await api('studentDirectory', {}, { msg: '학생 목록을 불러오는 중...' }); } catch (e) { return alert(e.message); }
+      const have = new Set(c.members || []), list = dir.filter(s => !have.has(s.id)).sort((a, b) => a.id.localeCompare(b.id));
+      openModal(`👥 ${c.name}에 학생 추가`, `<input id="cmSearch" class="inp" placeholder="이름·학번·학과로 찾기" oninput="filterMemberPicker()">
+        <div class="flex items-center justify-between text-[11px] text-slate-500"><span>등록된 학생 중에서 고릅니다. 명단에 없는 학생은 [+ 새 학생 등록]을 쓰세요.</span>
+          <button onclick="document.querySelectorAll('.mp-row:not(.hidden) .mp-chk').forEach(x=>x.checked=true)" class="underline">보이는 학생 전체 선택</button></div>
+        <div class="max-h-80 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">${list.map(s => `<label class="mp-row flex items-center gap-2 px-3 py-2 hover:bg-slate-50" data-q="${esc((s.name + s.id + s.dept).toLowerCase())}">
+          <input type="checkbox" class="mp-chk" value="${esc(s.id)}"><span class="font-mono text-slate-500">${esc(s.id)}</span><b>${esc(s.name)}</b><span class="text-slate-400">${esc(s.dept)} ${s.grade}학년</span>${s.major ? '' : '<span class="text-violet-600 text-[10px]">반 전용</span>'}</label>`).join('') || '<p class="p-3 text-slate-400">추가할 수 있는 학생이 없습니다.</p>'}</div>`,
+        { wide: true, okText: '선택한 학생 추가', onOk: () => { const ids = [...document.querySelectorAll('.mp-chk:checked')].map(x => x.value); if (!ids.length) return modalErr('추가할 학생을 고르세요.'); return modalAct('updateClass', { id: cid, addMembers: ids }, `${ids.length}명을 추가했습니다.`); } });
+    }
+    function filterMemberPicker() { const q = $('cmSearch').value.trim().toLowerCase(); document.querySelectorAll('.mp-row').forEach(r => r.classList.toggle('hidden', !!q && !r.dataset.q.includes(q))); }
+    function removeClassMember(cid, sid) {
+      const s = state.students.find(x => x.id === sid) || { name: sid };
+      if (confirm(`${s.name}(${sid}) 학생을 이 반에서 뺄까요?\n(학생 계정과 다른 출결 기록은 그대로 남습니다)`)) act('updateClass', { id: cid, removeMembers: [sid] });
+    }
+    function openClassNewStudent(cid) {
+      const c = findClass(cid);
+      openModal(`➕ ${c.name}에 새 학생 등록`, `<label class="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl p-3">
+          <input type="checkbox" id="csOnly" checked class="mt-0.5"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단·0교시/방과후 통계에 나오지 않고 이 반에서만 관리합니다. 학과는 '기타'도 고를 수 있습니다.</span></span></label>`
+        + studentFieldsHtml('cn', { dept: '기타', allowOther: true, optional: true })
+        + `<p class="text-[11px] text-slate-400">초기 로그인 비밀번호는 <b>학번</b>입니다. 이 반 QR로 학번 + PIN으로 출석합니다.</p>`,
+        { wide: true, okText: '등록', onOk: () => { const d = readStudentFields('cn'); return modalAct('addStudent', Object.assign(d, { classId: cid, classOnly: $('csOnly').checked }), '등록했습니다. 학생에게 학번과 PIN을 알려주세요.'); } });
+    }
+    function manageClassAtt(cid, sid) {
+      const s = state.students.find(x => x.id === sid) || { id: sid, name: sid }, c = findClass(cid);
+      openModal(`✏️ ${s.name} · ${c.name} 출결 수정`, `<div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">날짜</label><input type="date" id="caDate" value="${todayStr()}" class="inp" onchange="caLoad('${cid}','${sid}')"></div>
+        <div><label class="lbl">상태</label><select id="caStatus" class="inp"><option value="">(기록 삭제)</option><option>정상출석</option><option>지각</option><option>사유불참</option><option>무단불참</option></select></div>
+        <div><label class="lbl">입실</label><input type="time" id="caIn" class="inp font-mono"></div><div><label class="lbl">퇴실</label><input type="time" id="caOut" class="inp font-mono"></div>
+        <div class="col-span-2"><label class="lbl">사유 / 비고</label><input id="caReason" class="inp"></div></div><p id="caCur" class="text-[11px] text-slate-500"></p>`,
+        { onOk: () => { const status = $('caStatus').value;
+          return modalAct('editAttendance', { sid, date: $('caDate').value, session: cid, rec: status ? { status, in: $('caIn').value, out: $('caOut').value, reason: $('caReason').value } : null }); } });
+      caLoad(cid, sid);
+    }
+    function caLoad(cid, sid) {
+      const r = getRec($('caDate').value, cid, sid);
+      $('caStatus').value = r ? r.status : '정상출석'; $('caIn').value = r ? r.in || '' : ''; $('caOut').value = r ? r.out || '' : ''; $('caReason').value = r ? r.reason || '' : '';
+      $('caCur').textContent = r ? `현재 기록: ${r.status} ${r.in ? '입실 ' + r.in : ''} ${r.out ? '퇴실 ' + r.out : ''}` : '현재 기록 없음';
+    }
+    function exportClassCSV(cid) {
+      const c = findClass(cid), period = state.clsPeriod || 'month', members = classMembers(c), ids = new Set(members.map(s => s.id));
+      const rows = [[`${c.name} 출결 (${period === 'month' ? '이번 달' : '올해'})`], ['학번', '이름', '학과', '소속', '운영일', '정상출석', '지각', '사유불참', '무단불참', '출석률']];
+      members.forEach(s => { const st = calcStats(s.id, period, cid); rows.push([s.id, s.name, s.dept, s.major === false ? '반 전용' : '전공심화반', st.total, st.normal, st.tardy, st.excused, st.unexcused, fmtRate(st.rate)]); });
+      rows.push([], ['[일자별 상세]'], ['날짜', '학번', '이름', '입실', '퇴실', '상태', 'GPS(m)', '비고']);
+      Object.keys(state.attendance).sort().forEach(d => Object.values((state.attendance[d] || {})[cid] || {}).forEach(r => {
+        if (!ids.has(r.sid)) return; const s = members.find(x => x.id === r.sid);
+        rows.push([d, r.sid, s ? s.name : '', r.in, r.out, r.status, r.dist ?? '', r.reason || '']); }));
+      downloadCSV(`${c.name}_출결_${todayStr()}.csv`, rows);
+    }
+
+    // ---- 전달 사항 ----
+    function openClassNotice(cid) {
+      const c = findClass(cid);
+      openModal(`📢 ${c.name} 전달 사항`, `<div><label class="lbl">제목</label><input id="cnTitle" class="inp"></div><div><label class="lbl">내용</label><textarea id="cnContent" rows="4" class="inp"></textarea></div>
+        <p class="text-[11px] text-slate-400">이 반 학생과 담당 선생님(그리고 관리자·전체 조회 선생님)만 볼 수 있습니다.</p>`,
+        { okText: '전달', onOk: () => modalAct('addClassNotice', { classId: cid, title: $('cnTitle').value, content: $('cnContent').value }) });
+    }
+
+    // ---- 학생: 내 반 ----
+    function renderMyClasses() {
+      const s = me(), today = todayStr(), list = state.classes || [];
+      $('classStudentView').innerHTML = list.length ? list.map(c => {
+        const win = getWindow(c.id, today), active = (state.activeDates[c.id] || []).includes(today), locked = (state.lockedDates[c.id] || []).includes(today), r = getRec(today, c.id, s.id);
+        const badge = !active || !win ? '<span class="text-slate-400 text-xs">오늘 미운영</span>' : locked ? '<span class="text-rose-600 font-bold text-xs">🔒 마감</span>' : r ? statusPill(win.twoScan && r.in && !r.out ? '입실완료' : r.status) : '<span class="text-slate-500 text-xs">미등록</span>';
+        const st = calcStats(s.id, 'month', c.id);
+        const notes = (state.classNotices || []).filter(n => n.classId === c.id).sort((a, b) => String(b.date).localeCompare(String(a.date)) || Number(b.id) - Number(a.id));
+        return `<div class="bg-white rounded-2xl shadow-sm border border-violet-200 overflow-hidden">
+          <div class="bg-gradient-to-r from-violet-700 to-indigo-800 text-white p-4 flex flex-wrap items-center justify-between gap-2">
+            <div><h3 class="font-extrabold text-lg">📚 ${esc(c.name)}</h3>${c.desc ? `<p class="text-xs text-violet-100">${esc(c.desc)}</p>` : ''}<p class="text-xs text-violet-200 mt-1">🕒 ${esc(classTimes(c))} · 학생 ${c.memberCount || 0}명</p></div>
+            <div class="bg-white rounded-xl px-3 py-1.5">${badge}</div></div>
+          <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="space-y-2">
+              <p class="text-slate-600">오늘: ${win ? `<b>${esc(win.label)}</b>` : '시간표 없음'}</p>
+              <button onclick="studentScan('attend','${c.id}')" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 rounded-xl">📷 출석 (입/퇴실)</button>
+              <button onclick="studentScan('absent','${c.id}')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl border border-slate-300">사유 불참</button>
+              <p class="text-slate-500">이번 달 출석률 <b class="text-violet-700">${fmtRate(st.rate)}</b> · 지각 ${st.tardy} · 불참 ${st.excused + st.unexcused}</p>
+            </div>
+            <div class="md:col-span-2 space-y-2"><p class="font-bold text-slate-800">📢 전달 사항</p>
+              ${notes.length ? notes.map(n => `<div class="border border-slate-200 rounded-xl p-3"><div class="flex justify-between gap-2"><b>${esc(n.title)}</b><span class="text-slate-400 font-mono whitespace-nowrap">${esc(n.date)} ${esc(n.author)}</span></div><p class="text-slate-700 mt-1 whitespace-pre-line">${esc(n.content)}</p></div>`).join('') : '<p class="text-slate-400">전달 사항이 없습니다.</p>'}</div>
+          </div></div>`;
+      }).join('') : '<p class="text-xs text-slate-400 bg-white rounded-2xl p-6 border border-slate-200">소속된 반이 없습니다.</p>';
     }
   </script>
 </body>
