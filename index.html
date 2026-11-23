@@ -652,11 +652,30 @@
               <h2 class="font-bold text-slate-900 text-base flex items-center gap-2 border-b border-slate-100 pb-3"><i data-lucide="map-pin" class="w-5 h-5 text-indigo-600"></i> 학교 GPS 기준 좌표</h2>
               <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed">
                 유한공업고등학교: <b>서울 구로구 경인로 8</b>. 기본값은 대략적인 좌표입니다.<br>
-                <b>가장 정확한 방법</b>: 학교 본관에서 휴대폰으로 이 화면을 열고 [현재 위치 가져오기] → [좌표 저장].
+                <b>정확하게 정하는 방법 2가지</b>: ① 아래 칸에 구글 지도 좌표 붙여넣기 ② 학교에서 휴대폰으로 [현재 위치 가져오기]
+              </div>
+              <!-- 구글 지도 좌표 붙여넣기 -->
+              <div class="border-2 border-dashed border-indigo-300 bg-indigo-50/40 rounded-xl p-3 space-y-2">
+                <label class="lbl !text-indigo-800">📋 구글 지도 좌표 붙여넣기</label>
+                <div class="flex gap-2">
+                  <input id="admCoordPaste" class="inp font-mono" placeholder="예: 37.49253, 126.82371" oninput="applyPastedCoord(false)" onpaste="setTimeout(() => applyPastedCoord(true), 0)">
+                  <button onclick="applyPastedCoord(true)" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg px-3 text-xs">적용</button>
+                </div>
+                <p id="admCoordMsg" class="text-[11px] text-slate-500"></p>
+                <details class="text-[11px] text-slate-600">
+                  <summary class="cursor-pointer font-semibold text-indigo-700">좌표 복사하는 방법 보기</summary>
+                  <ol class="list-decimal pl-5 mt-1 space-y-0.5 leading-relaxed">
+                    <li>PC에서 <a href="https://www.google.com/maps/search/유한공업고등학교" target="_blank" rel="noopener" class="underline text-indigo-600">구글 지도에서 유한공업고등학교</a>를 엽니다.</li>
+                    <li>학교 <b>본관 건물 한가운데</b>를 <b>마우스 오른쪽 버튼</b>으로 클릭합니다.</li>
+                    <li>뜨는 메뉴 <b>맨 위의 숫자</b>(예: <span class="font-mono">37.49253, 126.82371</span>)를 <b>한 번 클릭</b>하면 복사됩니다.</li>
+                    <li>위 칸에 <b>Ctrl+V</b>로 붙여넣으면 위도·경도가 자동으로 들어갑니다 → 아래 <b>[좌표 저장]</b></li>
+                  </ol>
+                  <p class="mt-1 text-slate-400">휴대폰 구글 지도: 건물을 꾹 누르면 위쪽 검색창에 좌표가 나옵니다. 지도 주소(URL)나 37°29'33.1"N 형식을 붙여넣어도 됩니다.</p>
+                </details>
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <div><label class="lbl">위도 (Lat)</label><input id="admLat" class="inp font-mono" inputmode="decimal"></div>
-                <div><label class="lbl">경도 (Lng)</label><input id="admLng" class="inp font-mono" inputmode="decimal"></div>
+                <div><label class="lbl">위도 (Lat)</label><input id="admLat" class="inp font-mono" inputmode="decimal" oninput="updateCoordPreview()"></div>
+                <div><label class="lbl">경도 (Lng)</label><input id="admLng" class="inp font-mono" inputmode="decimal" oninput="updateCoordPreview()"></div>
                 <div><label class="lbl">허용 반경 (m)</label><input id="admRadius" type="number" min="50" class="inp font-mono"></div>
                 <div class="flex items-end"><a id="admMapLink" target="_blank" rel="noopener" class="w-full text-center bg-slate-100 hover:bg-slate-200 rounded-lg py-2 text-xs font-semibold">🗺️ 구글 지도에서 확인</a></div>
               </div>
@@ -1843,10 +1862,53 @@
       $('admLocStatus').innerText = '현재 위치 측정 중...';
       if (!navigator.geolocation) return ($('admLocStatus').innerText = '이 브라우저는 위치 정보를 지원하지 않습니다.');
       navigator.geolocation.getCurrentPosition(p => { $('admLat').value = p.coords.latitude.toFixed(6); $('admLng').value = p.coords.longitude.toFixed(6);
-        $('admLocStatus').innerText = `측정 완료 (정확도 약 ${Math.round(p.coords.accuracy)}m). [좌표 저장]을 눌러야 적용됩니다.`; },
+        $('admLocStatus').innerText = `측정 완료 (정확도 약 ${Math.round(p.coords.accuracy)}m). [좌표 저장]을 눌러야 적용됩니다.`; updateCoordPreview(); },
         () => $('admLocStatus').innerText = '위치를 가져오지 못했습니다. 위치 권한을 허용했는지 확인하세요.', { enableHighAccuracy: true, timeout: 15000 });
     }
-    function saveSchoolLocation() { act('saveLocation', { lat: $('admLat').value, lng: $('admLng').value, radius: $('admRadius').value }, '📍 학교 좌표가 저장되었습니다.'); }
+    // 구글 지도에서 복사한 좌표 글자를 위도·경도로 바꾸기
+    //  지원: "37.49253, 126.82371" / "37.49253 126.82371" / 37°29'33.1"N 126°49'25.3"E / 지도 주소(@37.49,126.82 · !3d37.49!4d126.82 · q=37.49,126.82)
+    function parseCoord(text) {
+      const t = String(text || '').trim();
+      if (!t) return null;
+      let m = t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || t.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?)(?:,|%2C)\s*(-?\d+(?:\.\d+)?)/i);
+      if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+      const dms = [...t.matchAll(/(\d+(?:\.\d+)?)\s*°\s*(\d+(?:\.\d+)?)?\s*['′]?\s*(\d+(?:\.\d+)?)?\s*(?:["″]|'')?\s*([NSEW])/gi)];
+      if (dms.length >= 2) {
+        const v = x => (Number(x[1]) + (Number(x[2]) || 0) / 60 + (Number(x[3]) || 0) / 3600) * (/[SW]/i.test(x[4]) ? -1 : 1);
+        const latPart = dms.find(x => /[NS]/i.test(x[4])), lngPart = dms.find(x => /[EW]/i.test(x[4]));
+        if (latPart && lngPart) return { lat: v(latPart), lng: v(lngPart) };
+      }
+      const nums = t.replace(/[()]/g, '').match(/-?\d+(?:\.\d+)?/g);
+      if (nums && nums.length >= 2) {
+        let a = Number(nums[0]), b = Number(nums[1]);
+        if (a > 100 && b < 100) [a, b] = [b, a];   // 경도, 위도 순서로 붙여넣은 경우
+        return { lat: a, lng: b };
+      }
+      return null;
+    }
+    const inKorea = p => p && p.lat >= 33 && p.lat <= 39 && p.lng >= 124 && p.lng <= 132;
+    function applyPastedCoord(showError) {
+      const raw = $('admCoordPaste').value, p = parseCoord(raw), msg = $('admCoordMsg');
+      if (!raw.trim()) { msg.textContent = ''; return; }
+      if (!inKorea(p)) { msg.className = 'text-[11px] text-rose-600 font-semibold'; msg.textContent = showError ? '좌표를 읽지 못했습니다. 구글 지도에서 복사한 "37.49253, 126.82371" 형태인지 확인하세요.' : ''; return; }
+      $('admLat').value = p.lat.toFixed(6); $('admLng').value = p.lng.toFixed(6);
+      updateCoordPreview();
+    }
+    // 입력한 좌표가 지금 저장된 학교 좌표와 얼마나 다른지 + 지도에서 확인 링크
+    function updateCoordPreview() {
+      const lat = parseFloat($('admLat').value), lng = parseFloat($('admLng').value), msg = $('admCoordMsg');
+      if (!inKorea({ lat, lng })) return;
+      const s = state.schoolLocation, moved = calcHaversine(Number(s.lat), Number(s.lng), lat, lng);
+      $('admMapLink').href = `https://www.google.com/maps?q=${lat},${lng}`;
+      msg.className = 'text-[11px] text-emerald-700 font-semibold';
+      msg.textContent = `✅ 위도 ${lat.toFixed(6)} · 경도 ${lng.toFixed(6)} — 지금 저장된 좌표에서 약 ${moved.toLocaleString()}m 떨어진 곳입니다. [구글 지도에서 확인]으로 위치를 본 뒤 [좌표 저장]을 누르세요.`;
+    }
+    function saveSchoolLocation() {
+      const lat = parseFloat($('admLat').value), lng = parseFloat($('admLng').value);
+      if (!inKorea({ lat, lng })) return alert('위도·경도를 확인하세요. (예: 37.49253, 126.82371)');
+      act('saveLocation', { lat, lng, radius: $('admRadius').value }, `📍 학교 좌표가 저장되었습니다.\n위도 ${lat.toFixed(6)}, 경도 ${lng.toFixed(6)}`)
+        .then(ok => { if (ok) { $('admCoordPaste').value = ''; $('admCoordMsg').textContent = ''; } });
+    }
     function saveSiteUrl() { act('saveSiteUrl', { url: $('admSiteUrl').value }, '저장되었습니다.'); }
     function toggleTestMode() {
       const on = !state.testMode;
