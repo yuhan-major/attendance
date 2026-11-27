@@ -134,6 +134,10 @@
             <select id="qkAbsentCat" class="inp"><option value="병원 진료">🏥 병원 진료 및 치료</option><option value="대회/자격증 준비">🏆 대회/자격증 시험 참가</option><option value="교사 면담">👨‍🏫 담임/담당교사 특별상담</option><option value="기타 공결 사유">📝 기타 인정 공결</option></select></div>
           <div><label class="lbl">상세 사유</label><textarea id="qkAbsentDetail" rows="2" class="inp" placeholder="사유를 적어주세요"></textarea></div>
         </div>
+        <div id="qkLateBox" class="hidden space-y-1">
+          <label class="lbl text-amber-700">⚠️ 지각 사유 (선택)</label>
+          <textarea id="qkLateReason" rows="2" class="inp" placeholder="늦은 이유를 적어두면 선생님이 바로 확인할 수 있어요. 비워두면 선생님께 직접 알려드려야 해요."></textarea>
+        </div>
         <button onclick="submitQuickCheck()" id="qkSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow text-sm">출석 인증하기</button>
       </div>
       <div id="qkResult" class="hidden text-center space-y-3">
@@ -778,22 +782,14 @@
         </div>
       </div>
       <div id="qrUrlWarning" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900"></div>
-      <div id="printable-qr-section" class="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
-        <div class="border-2 border-indigo-500 rounded-3xl p-6 bg-indigo-50/30 flex flex-col items-center space-y-3">
+      <div id="printable-qr-section" class="flex justify-center text-center">
+        <div class="border-2 border-indigo-500 rounded-3xl p-6 bg-indigo-50/30 flex flex-col items-center space-y-3 max-w-sm w-full">
           <span class="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">0교시 · 방과후 공용</span>
           <h3 class="font-extrabold text-xl text-indigo-950">[교실 부착용] 참석 QR</h3>
           <p class="text-sm font-bold text-indigo-700 qr-dept-label"></p>
           <div id="printableClassroomQr" class="bg-white p-4 rounded-2xl shadow border border-slate-200 flex items-center justify-center min-h-[200px] min-w-[200px]"></div>
           <p class="text-xs text-slate-600 leading-relaxed font-medium" id="printableClassroomDesc"></p>
           <a id="testLinkAttend" target="_blank" class="text-[10px] text-indigo-500 underline no-print">이 QR 링크 열어보기</a>
-        </div>
-        <div class="border-2 border-amber-500 rounded-3xl p-6 bg-amber-50/30 flex flex-col items-center space-y-3">
-          <span class="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">담당교사 확인 전용</span>
-          <h3 class="font-extrabold text-xl text-amber-950">[교무실 부착용] 불참 QR</h3>
-          <p class="text-sm font-bold text-amber-700 qr-dept-label"></p>
-          <div id="printableOfficeQr" class="bg-white p-4 rounded-2xl shadow border border-slate-200 flex items-center justify-center min-h-[200px] min-w-[200px]"></div>
-          <p class="text-xs text-slate-600 leading-relaxed font-medium">교무실 방문 면담 후 휴대폰 카메라로 스캔<br><b>학번 + PIN + 사유 입력</b></p>
-          <a id="testLinkAbsent" target="_blank" class="text-[10px] text-amber-600 underline no-print">이 QR 링크 열어보기</a>
         </div>
       </div>
     </div>
@@ -1154,17 +1150,24 @@
     }
     function updateQuickSession() {
       const cls = quickClass();
-      if (cls) { const w = getWindow(cls.id, todayStr()); $('qkSessionHint').innerText = ''; $('qkDept').innerText = `📚 ${cls.name}` + (w ? ` · 오늘 ${w.label}` : ' · 오늘은 시간표가 없습니다'); return; }
+      if (cls) { const w = getWindow(cls.id, todayStr()); $('qkSessionHint').innerText = ''; $('qkDept').innerText = `📚 ${cls.name}` + (w ? ` · 오늘 ${w.label}` : ' · 오늘은 시간표가 없습니다'); return updateLateBox(w); }
       const ss = guessSession(); $('qkSession').value = ss;
       const win = getWindow(ss, todayStr());
       $('qkSessionHint').innerText = win ? `현재 ${nowHM()} 기준 자동 선택 · 오늘 ${SESSION_LABEL[ss]} ${win.label}` : `오늘은 ${SESSION_LABEL[ss]} 시간표가 없습니다.`;
+      updateLateBox(win);
     }
-    function resetQuickCheck() { $('qkForm').classList.remove('hidden'); $('qkResult').classList.add('hidden'); $('qkPin').value = ''; $('qkAbsentDetail').value = ''; updateQuickSession(); }
+    // 시작 시각은 지났지만 아직 지각 인정 시간 안일 때, 미리 지각 사유를 적을 수 있게 보여준다.
+    function updateLateBox(win) {
+      const show = !!win && qrParams.type !== 'absent' && toMin(nowHM()) > toMin(win.inEnd) && (!win.lateUntil || toMin(nowHM()) <= toMin(win.lateUntil));
+      $('qkLateBox').classList.toggle('hidden', !show);
+    }
+    function resetQuickCheck() { $('qkForm').classList.remove('hidden'); $('qkResult').classList.add('hidden'); $('qkPin').value = ''; $('qkAbsentDetail').value = ''; $('qkLateReason').value = ''; updateQuickSession(); }
     async function submitQuickCheck() {
       const sid = $('qkId').value.trim(), pin = $('qkPin').value.trim();
       if (!/^\d{4,5}$/.test(sid) || !/^\d{4}$/.test(pin)) return alert('학번(4자리)과 PIN 4자리를 입력하세요.');
       let reason = '';
       if (qrParams.type === 'absent') { const det = $('qkAbsentDetail').value.trim(); if (!det) return alert('상세 사유를 입력하세요.'); reason = `${$('qkAbsentCat').value} - ${det}`; }
+      else reason = $('qkLateReason').value.trim();
       const show = (ok, msg) => { $('qkForm').classList.add('hidden'); $('qkResult').classList.remove('hidden'); $('qkResultIcon').innerText = ok ? '✅' : '⛔'; $('qkResultMsg').innerText = msg; };
       $('qkSubmit').disabled = true;
       try {
@@ -1185,7 +1188,6 @@
         <div><label class="lbl">학번 * <span class="font-normal text-slate-400">(학년·반·번호 4자리, 예: 3104)</span></label><input id="${p}Id" inputmode="numeric" maxlength="5" class="inp font-mono" placeholder="3104"></div>
         <div><label class="lbl">이름 *</label><input id="${p}Name" class="inp"></div>
         <div><label class="lbl">학과 *</label><select id="${p}Dept" class="inp" ${o.lockDept ? 'disabled' : ''}>${DEPT_NAMES.concat(o.allowOther ? ['기타'] : []).map(d => `<option ${d === o.dept ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
-        <div><label class="lbl">학년 *</label><select id="${p}Grade" class="inp"><option>1</option><option>2</option><option selected>3</option></select></div>
         <div><label class="lbl">연락처 ${o.optional ? '' : '*'}</label><input id="${p}Phone" inputmode="tel" class="inp font-mono" placeholder="010-0000-0000"></div>
         <div><label class="lbl">구글 이메일 ${o.optional ? '' : '*'}</label><input id="${p}Email" type="email" class="inp" placeholder="example@gmail.com"></div>
         ${o.password ? `<div><label class="lbl">비밀번호 * <span class="font-normal text-slate-400">(8자 이상)</span></label><input id="${p}Pw" type="password" class="inp"></div>
@@ -1197,7 +1199,8 @@
     }
     function readStudentFields(p) {
       const v = id => ($(p + id) ? $(p + id).value.trim() : '');
-      return { id: v('Id'), name: v('Name'), dept: v('Dept'), grade: v('Grade'), phone: v('Phone'), email: v('Email'), pw: $(p + 'Pw') ? $(p + 'Pw').value : '', pw2: $(p + 'Pw2') ? $(p + 'Pw2').value : '', pin: v('Pin'), company: v('Company'), certs: v('Certs') };
+      const id = v('Id');
+      return { id, name: v('Name'), dept: v('Dept'), grade: id.charAt(0), phone: v('Phone'), email: v('Email'), pw: $(p + 'Pw') ? $(p + 'Pw').value : '', pw2: $(p + 'Pw2') ? $(p + 'Pw2').value : '', pin: v('Pin'), company: v('Company'), certs: v('Certs') };
     }
     function showSignup() { $('signupFields').innerHTML = studentFieldsHtml('su', { password: true }); $('signupAgree').checked = false; $('signupError').classList.add('hidden'); showScreen('signup'); }
     async function submitSignup() {
@@ -1518,7 +1521,7 @@
     function renderPrintableQr() {
       const code = $('qrDeptSelect').value, base = qrBaseUrl(), cls = code.startsWith('c:') ? findClass(code.slice(2)) : null;
       const q = cls ? `c=${cls.id}` : `d=${code}`;
-      const urlA = `${base}?qr=attend&${q}`, urlB = `${base}?qr=absent&${q}`;
+      const urlA = `${base}?qr=attend&${q}`;
       const bad = !/^https:\/\//i.test(base);
       $('qrUrlWarning').classList.toggle('hidden', !bad);
       $('qrUrlWarning').innerHTML = `⚠️ QR 주소가 <b class="font-mono break-all">${esc(base)}</b> 입니다. https 주소(GitHub Pages)에서 열어야 학생 휴대폰에서 동작합니다.`;
@@ -1529,8 +1532,8 @@
         $('printableClassroomDesc').innerHTML = `휴대폰 카메라로 스캔 → <b>학번 + PIN 4자리</b><br>${esc(times) || '시간 미설정'}<br>${cls.mode === 'one' ? '입실 때 한 번 스캔' : '시작 전 입실 · 종료 후 퇴실 스캔'}`;
       } else
       $('printableClassroomDesc').innerHTML = `휴대폰 카메라로 스캔 → <b>학번 + PIN 4자리</b><br>0교시: <b>${z.inStart}~${z.inEnd}</b> 입실<br>방과후: 시작 전 입실 · 종료 후 퇴실 스캔`;
-      $('testLinkAttend').href = urlA; $('testLinkAbsent').href = urlB;
-      [['printableClassroomQr', urlA], ['printableOfficeQr', urlB]].forEach(([id, text]) => {
+      $('testLinkAttend').href = urlA;
+      [['printableClassroomQr', urlA]].forEach(([id, text]) => {
         const el = $(id); el.innerHTML = '';
         try { if (!window.QRCode) throw new Error('QR 라이브러리를 불러오지 못했습니다.'); new QRCode(el, { text, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); }
         catch (e) { el.innerHTML = `<p class="text-rose-600 text-xs">${esc(e.message)}</p>`; }
@@ -1955,7 +1958,9 @@
         const latPart = dms.find(x => /[NS]/i.test(x[4])), lngPart = dms.find(x => /[EW]/i.test(x[4]));
         if (latPart && lngPart) return { lat: v(latPart), lng: v(lngPart) };
       }
-      const nums = t.replace(/[()]/g, '').match(/-?\d+(?:\.\d+)?/g);
+      // 소수점 있는 숫자만 좌표로 본다 — 안 그러면 "경인로 8, 37.49, 126.82"처럼
+      // 지도 앱이 주소까지 같이 복사해줄 때 번지수(8)를 위도로 잘못 집어버리는 문제가 있었다.
+      const nums = t.replace(/[()]/g, '').match(/-?\d{1,3}\.\d+/g);
       if (nums && nums.length >= 2) {
         let a = Number(nums[0]), b = Number(nums[1]);
         if (a > 100 && b < 100) [a, b] = [b, a];   // 경도, 위도 순서로 붙여넣은 경우
@@ -1967,7 +1972,13 @@
     function applyPastedCoord(showError) {
       const raw = $('admCoordPaste').value, p = parseCoord(raw), msg = $('admCoordMsg');
       if (!raw.trim()) { msg.textContent = ''; return; }
-      if (!inKorea(p)) { msg.className = 'text-[11px] text-rose-600 font-semibold'; msg.textContent = showError ? '좌표를 읽지 못했습니다. 구글 지도에서 복사한 "37.49253, 126.82371" 형태인지 확인하세요.' : ''; return; }
+      if (!inKorea(p)) {
+        msg.className = 'text-[11px] text-rose-600 font-semibold';
+        msg.textContent = showError ? (/goo\.gl|maps\.app/i.test(raw)
+          ? '이 짧은 공유 링크에는 좌표가 들어있지 않아 읽을 수 없습니다. 지도에서 건물을 길게 눌러(또는 우클릭) 나오는 좌표나 플러스 코드를 복사해서 붙여넣어 주세요.'
+          : '좌표를 읽지 못했습니다. 구글 지도에서 복사한 "37.49253, 126.82371" 형태인지 확인하세요.') : '';
+        return;
+      }
       $('admLat').value = p.lat.toFixed(6); $('admLng').value = p.lng.toFixed(6);
       updateCoordPreview();
     }
@@ -2072,14 +2083,24 @@
       const y = state.clsCalY, m = state.clsCalM, first = new Date(y, m - 1, 1).getDay(), dim = new Date(y, m, 0).getDate();
       let cal = '<div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 mb-1">' + WEEK.map(w => `<div>${w}</div>`).join('') + '</div><div class="grid grid-cols-7 gap-1">';
       for (let i = 0; i < first; i++) cal += '<div></div>';
+      const selMode = mgr && state.calSelectMode, selected = state.calSelected || [];
       for (let day = 1; day <= dim; day++) {
-        const ds = `${y}-${pad(m)}-${pad(day)}`, on = (state.activeDates[c.id] || []).includes(ds), lk = (state.lockedDates[c.id] || []).includes(ds);
-        cal += `<div ${mgr ? `onclick="toggleClassDate('${c.id}','${ds}')"` : ''} class="p-1 rounded-lg border text-center text-[11px] ${mgr ? 'cursor-pointer' : ''} ${lk ? 'bg-rose-50 border-rose-200 text-rose-800' : on ? 'bg-violet-50 border-violet-200 text-violet-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'} ${ds === today ? 'ring-2 ring-amber-400' : ''}">
-          <div class="flex items-center justify-between"><span class="font-mono">${day}</span>${mgr ? `<button onclick="toggleClassLock('${c.id}','${ds}',event)" class="text-[9px]">${lk ? '🔒' : '🔓'}</button>` : lk ? '🔒' : ''}</div><div class="text-[9px]">${lk ? '마감' : on ? '운영' : '-'}</div></div>`;
+        const ds = `${y}-${pad(m)}-${pad(day)}`, on = (state.activeDates[c.id] || []).includes(ds), lk = (state.lockedDates[c.id] || []).includes(ds), sel = selected.includes(ds);
+        const click = mgr ? (selMode ? `toggleCalSelect('${ds}')` : `toggleClassDate('${c.id}','${ds}')`) : '';
+        cal += `<div ${click ? `onclick="${click}"` : ''} class="p-1 rounded-lg border text-center text-[11px] ${mgr ? 'cursor-pointer' : ''} ${selMode && sel ? 'ring-2 ring-indigo-500 bg-indigo-100' : ''} ${lk ? 'bg-rose-50 border-rose-200 text-rose-800' : on ? 'bg-violet-50 border-violet-200 text-violet-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'} ${ds === today ? 'ring-2 ring-amber-400' : ''}">
+          <div class="flex items-center justify-between"><span class="font-mono">${selMode && sel ? '✅' : day}</span>${!selMode && mgr ? `<button onclick="toggleClassLock('${c.id}','${ds}',event)" class="text-[9px]">${lk ? '🔒' : '🔓'}</button>` : lk ? '🔒' : ''}</div><div class="text-[9px]">${lk ? '마감' : on ? '운영' : '-'}</div></div>`;
       }
       cal += '</div>';
       const calNav = btn('◀', `shiftClassCal(-1)`) + `<span class="font-bold text-slate-700 px-1 py-1.5">${y}년 ${m}월</span>` + btn('▶', `shiftClassCal(1)`)
-        + (mgr ? btn('운영 요일 일괄 지정', `fillClassMonth('${c.id}')`, 'bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200') : '');
+        + (mgr ? (selMode
+            ? btn('전체 선택', `calSelectAll('${c.id}')`, 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200')
+              + btn('선택 해제', `calSelectNone()`, 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200')
+              + btn(`선택 ${selected.length}일 운영 지정`, `applyCalSelect('${c.id}',true)`, 'bg-violet-600 hover:bg-violet-700 text-white')
+              + btn('선택 미운영 지정', `applyCalSelect('${c.id}',false)`, 'bg-slate-500 hover:bg-slate-600 text-white')
+              + btn('✕ 선택 모드 끄기', `toggleCalSelectMode()`, 'bg-white hover:bg-slate-50 text-slate-500 border border-slate-300')
+            : btn('운영 요일 일괄 지정', `fillClassMonth('${c.id}')`, 'bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200')
+              + btn('📌 날짜 선택해서 지정', `toggleCalSelectMode()`, 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'))
+          : '');
 
       // 4) 학생 & 출결 통계
       const period = state.clsPeriod || 'month';
@@ -2087,7 +2108,7 @@
         const st = calcStats(s.id, period, c.id), rc = st.rate === null ? 'text-slate-400' : st.rate >= 90 ? 'text-emerald-600' : st.rate >= 80 ? 'text-amber-600' : 'text-rose-600';
         const tag = s.missing ? '<span class="text-rose-500">삭제됨</span>' : s.major === false ? '<span class="bg-violet-100 text-violet-700 px-1.5 rounded font-semibold">반 전용</span>' : '<span class="bg-indigo-50 text-indigo-600 px-1.5 rounded">전공심화반</span>';
         const acts = mgr ? `<button onclick="manageClassAtt('${c.id}','${s.id}')" class="text-indigo-600 font-semibold">기록 수정</button>`
-          + (s.major === false && !s.missing ? `<button onclick="resetStudentCred('${s.id}')" class="text-slate-600 font-semibold">PIN/비번</button>` : '')
+          + (s.major === false && !s.missing ? `<button onclick="resetStudentCred('${s.id}')" class="text-slate-600 font-semibold">PIN/비번</button><button onclick="promoteToMajor('${s.id}')" class="text-violet-600 font-semibold">전공심화반으로 전환</button>` : '')
           + `<button onclick="removeClassMember('${c.id}','${s.id}')" class="text-rose-500 font-semibold">반에서 빼기</button>` : '-';
         return `<tr class="hover:bg-slate-50"><td class="p-2 font-mono text-slate-500">${esc(s.id)}</td><td class="p-2 font-bold">${esc(s.name)} ${s.major === false && s.initialCred ? '🔐' : ''}</td><td class="p-2">${esc(s.dept)} ${s.grade ? s.grade + '학년' : ''} ${tag}</td>
           <td class="p-2 font-mono">${st.total}</td><td class="p-2 font-mono text-emerald-700">${st.normal}</td><td class="p-2 font-mono text-amber-700">${st.tardy}</td><td class="p-2 font-mono text-blue-700">${st.excused}</td><td class="p-2 font-mono text-rose-700">${st.unexcused}</td>
@@ -2095,7 +2116,7 @@
       }).join('');
       const memberBtns = `<select onchange="state.clsPeriod=this.value;renderClassDetail()" class="border border-slate-300 rounded-lg px-2 py-1.5"><option value="month" ${period === 'month' ? 'selected' : ''}>이번 달</option><option value="year" ${period === 'year' ? 'selected' : ''}>올해 전체</option></select>`
         + btn('엑셀 CSV', `exportClassCSV('${c.id}')`, 'bg-emerald-600 hover:bg-emerald-700 text-white')
-        + (mgr ? btn('+ 기존 학생 추가', `openClassMemberPicker('${c.id}')`, 'bg-indigo-600 hover:bg-indigo-700 text-white') + btn('+ 새 학생 등록', `openClassNewStudent('${c.id}')`, 'bg-violet-600 hover:bg-violet-700 text-white') : '');
+        + (mgr ? btn('+ 기존 학생 추가', `openClassMemberPicker('${c.id}')`, 'bg-indigo-600 hover:bg-indigo-700 text-white') + btn('+ 새 학생 등록', `openClassNewStudent('${c.id}')`, 'bg-violet-600 hover:bg-violet-700 text-white') + btn('+ 일괄 등록', `openClassBulkStudents('${c.id}')`, 'bg-amber-600 hover:bg-amber-700 text-white') : '');
       const table = `<div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse"><thead><tr class="bg-slate-100 text-slate-700"><th class="p-2">학번</th><th class="p-2">이름</th><th class="p-2">학과·소속</th><th class="p-2">운영일</th><th class="p-2">정상</th><th class="p-2">지각</th><th class="p-2">사유</th><th class="p-2">무단</th><th class="p-2">출석률</th><th class="p-2">관리</th></tr></thead>
         <tbody class="divide-y divide-slate-100">${rows || '<tr><td colspan="10" class="p-4 text-center text-slate-400">아직 학생이 없습니다. [+ 기존 학생 추가] 또는 [+ 새 학생 등록]으로 넣으세요.</td></tr>'}</tbody></table></div>
         <p class="text-[11px] text-slate-400 mt-2">"반 전용" 학생은 전공심화반이 아닌 학생으로, 전공심화반 명단·통계에는 나오지 않고 이 반에서만 관리합니다.</p>`;
@@ -2118,10 +2139,12 @@
     function openClassSettings(cid) {
       if (!state.serverHasClasses) return alert('반 기능을 쓰려면 먼저 서버(Apps Script)를 새 버전으로 배포해야 합니다.\n[사용 설명서 → 프로그램 고쳤을 때] 참고');
       const c = cid ? findClass(cid) : { name: '', desc: '', mode: 'two', days: { 1: { start: '18:00', end: '20:00' }, 2: { start: '18:00', end: '20:00' }, 3: { start: '18:00', end: '20:00' }, 4: { start: '18:00', end: '20:00' }, 5: { start: '18:00', end: '20:00' } }, earlyMin: 20, lateMin: 30, outBeforeMin: 10, outAfterMin: 30 };
+      const hasGrace = cid ? !!(Number(c.earlyMin) || Number(c.lateMin) || Number(c.outBeforeMin) || Number(c.outAfterMin)) : true;
       const dayRows = DAY_KEYS.map(k => { const d = (c.days || {})[k];
         return `<tr><td class="py-1 pr-2"><label class="flex items-center gap-1 font-bold"><input type="checkbox" id="csOn${k}" ${d ? 'checked' : ''} onchange="csDay(${k})"> ${WEEK[k]}</label></td>
           <td class="py-1 pr-1"><input type="time" id="csS${k}" value="${d ? d.start : '18:00'}" class="inp font-mono !p-1.5" ${d ? '' : 'disabled'}></td>
-          <td class="py-1"><input type="time" id="csE${k}" value="${d ? d.end : '20:00'}" class="inp font-mono !p-1.5" ${d ? '' : 'disabled'}></td></tr>`; }).join('');
+          <td class="py-1 pr-1"><input type="time" id="csE${k}" value="${d ? d.end : '20:00'}" class="inp font-mono !p-1.5" ${d ? '' : 'disabled'}></td>
+          <td class="py-1 pl-1"><button type="button" onclick="csCopyDay(${k})" title="이 시작·종료 시간을 체크된 다른 요일에 복사" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold whitespace-nowrap">다른 요일에 복사</button></td></tr>`; }).join('');
       openModal(cid ? `⚙️ ${c.name} 설정` : '📚 반 개설', `
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label class="lbl">반 이름 *</label><input id="csName" class="inp" value="${esc(c.name)}" placeholder="예: 방과후 자율학습반"></div>
@@ -2129,24 +2152,37 @@
           <div class="sm:col-span-2"><label class="lbl">설명 (선택)</label><input id="csDesc" class="inp" value="${esc(c.desc || '')}" placeholder="예: 방과후에 남아서 공부하는 학생 / 3층 자습실"></div>
         </div>
         <div><p class="lbl">요일별 시간 <span class="font-normal text-slate-400">(체크한 요일만 운영)</span></p>
-          <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th></tr></thead><tbody>${dayRows}</tbody></table></div>
-        <div class="grid grid-cols-2 gap-2">
+          <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th><th></th></tr></thead><tbody>${dayRows}</tbody></table></div>
+        <div class="flex items-center justify-between">
+          <p class="lbl !mb-0">입실·퇴실 유예 시간</p>
+          <label class="flex items-center gap-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" id="csGraceOn" ${hasGrace ? 'checked' : ''} onchange="csToggleGrace()"> 유예 시간 사용</label>
+        </div>
+        <div id="csGraceFields" class="grid grid-cols-2 gap-2 ${hasGrace ? '' : 'hidden'}">
           <div><label class="lbl">입실 가능 (시작 n분 전)</label><input type="number" min="0" id="csEarly" class="inp font-mono" value="${c.earlyMin}"></div>
           <div><label class="lbl">지각 인정 (시작 후 n분)</label><input type="number" min="0" id="csLate" class="inp font-mono" value="${c.lateMin}"></div>
           <div><label class="lbl">퇴실 가능 (종료 n분 전)</label><input type="number" min="0" id="csOutB" class="inp font-mono" value="${c.outBeforeMin}"></div>
           <div><label class="lbl">퇴실 마감 (종료 후 n분)</label><input type="number" min="0" id="csOutA" class="inp font-mono" value="${c.outAfterMin}"></div>
         </div>
+        <p class="text-[11px] text-slate-400">유예 시간을 끄면 입실·지각·퇴실 유예가 전부 0분으로 저장됩니다 (정시에만 정상 처리, 0교시처럼 유예가 필요 없는 반에 사용).</p>
         ${cid ? '' : '<p class="text-[11px] text-slate-500 bg-violet-50 border border-violet-200 rounded-lg p-2">만든 뒤 반 화면에서 ① 학생 추가 → ② 운영일 지정 → ③ 출결 QR 인쇄 순서로 진행하세요. 반을 만든 선생님이 담당 교사가 됩니다.</p>'}`,
         { wide: true, okText: cid ? '저장' : '반 개설', onOk: async () => {
           const days = {}; DAY_KEYS.forEach(k => { if ($('csOn' + k).checked) days[k] = { start: $('csS' + k).value, end: $('csE' + k).value }; });
           if (!Object.keys(days).length) return modalErr('운영할 요일을 1개 이상 고르세요.');
-          const settings = { name: $('csName').value, desc: $('csDesc').value, mode: $('csMode').value, days, earlyMin: $('csEarly').value, lateMin: $('csLate').value, outBeforeMin: $('csOutB').value, outAfterMin: $('csOutA').value };
+          const graceOn = $('csGraceOn').checked;
+          const settings = { name: $('csName').value, desc: $('csDesc').value, mode: $('csMode').value, days,
+            earlyMin: graceOn ? $('csEarly').value : 0, lateMin: graceOn ? $('csLate').value : 0,
+            outBeforeMin: graceOn ? $('csOutB').value : 0, outAfterMin: graceOn ? $('csOutA').value : 0 };
           const res = cid ? await api('updateClass', { id: cid, settings }) : await api('createClass', settings);
           closeModal(); state.selClass = res.id; await refresh();
           if (!cid) alert(`📚 '${res.name}' 반을 개설했습니다.\n이제 학생을 추가하고, 운영일을 지정한 뒤, 출결 QR을 인쇄하세요.`);
           return true; } });
     }
     function csDay(k) { const on = $('csOn' + k).checked; $('csS' + k).disabled = !on; $('csE' + k).disabled = !on; }
+    function csCopyDay(k) {
+      const s = $('csS' + k).value, e = $('csE' + k).value;
+      DAY_KEYS.forEach(k2 => { if (k2 !== k && $('csOn' + k2).checked) { $('csS' + k2).value = s; $('csE' + k2).value = e; } });
+    }
+    function csToggleGrace() { $('csGraceFields').classList.toggle('hidden', !$('csGraceOn').checked); }
 
     function openClassManagers(cid) {
       const c = findClass(cid), list = (state.teachers || []).slice().sort((a, b) => String(a.dept).localeCompare(String(b.dept)) || a.name.localeCompare(b.name));
@@ -2182,6 +2218,29 @@
       if (!confirm(`${y}년 ${m}월에서 운영 요일(${classTimes(c)})에 해당하는 ${add.length}일을 운영일로 지정할까요?\n공휴일·시험일은 나중에 날짜를 눌러 해제하세요.`)) return;
       act('setDates', { kind: 'active', session: cid, add });
     }
+    // 달력 날짜를 하나씩 눌러 켜고 끄는 대신, 일부 날짜만 체크해서 한 번에 지정할 때 쓰는 선택 모드.
+    function toggleCalSelectMode() { state.calSelectMode = !state.calSelectMode; state.calSelected = []; renderClassDetail(); }
+    function toggleCalSelect(ds) {
+      state.calSelected = state.calSelected || [];
+      const i = state.calSelected.indexOf(ds);
+      if (i === -1) state.calSelected.push(ds); else state.calSelected.splice(i, 1);
+      renderClassDetail();
+    }
+    function calSelectAll(cid) {
+      const y = state.clsCalY, m = state.clsCalM, dim = new Date(y, m, 0).getDate();
+      state.calSelected = []; for (let d = 1; d <= dim; d++) state.calSelected.push(`${y}-${pad(m)}-${pad(d)}`);
+      renderClassDetail();
+    }
+    function calSelectNone() { state.calSelected = []; renderClassDetail(); }
+    async function applyCalSelect(cid, on) {
+      const list = (state.calSelected || []).slice();
+      if (!list.length) return alert('선택된 날짜가 없습니다.');
+      const locked = list.filter(ds => (state.lockedDates[cid] || []).includes(ds));
+      if (locked.length) return alert(`선택한 날짜 중 ${locked.length}개는 이미 마감되어 있습니다. 마감을 먼저 해제하세요.`);
+      if (!confirm(`선택한 ${list.length}일을 ${on ? '운영일로' : '미운영으로'} 지정할까요?`)) return;
+      state.calSelected = []; state.calSelectMode = false;
+      await act('setDates', { kind: 'active', session: cid, add: on ? list : [], remove: on ? [] : list });
+    }
 
     // ---- 학생 ----
     async function openClassMemberPicker(cid) {
@@ -2201,13 +2260,59 @@
       const s = state.students.find(x => x.id === sid) || { name: sid };
       if (confirm(`${s.name}(${sid}) 학생을 이 반에서 뺄까요?\n(학생 계정과 다른 출결 기록은 그대로 남습니다)`)) act('updateClass', { id: cid, removeMembers: [sid] });
     }
+    // "+ 새 학생 등록"에서 '전공심화반 학생이 아님'을 실수로 체크한 채 등록했을 때 되돌리는 용도.
+    // 학번은 이미 다른 계정으로 존재하므로 반에서 빼고 재등록하면 "이미 등록된 학번"으로 막히는데,
+    // 이 버튼은 삭제·재등록 없이 같은 학생 레코드의 major 값만 바꾼다.
+    function promoteToMajor(sid) {
+      const s = state.students.find(x => x.id === sid); if (!s) return;
+      if (!confirm(`${s.name}(${sid})을(를) '반 전용'에서 '전공심화반' 학생으로 바꿀까요?\n이제부터 전공심화반 명단·0교시/방과후 통계에도 나타납니다.`)) return;
+      act('updateStudent', { id: sid, field: 'major', value: true });
+    }
     function openClassNewStudent(cid) {
       const c = findClass(cid);
       openModal(`➕ ${c.name}에 새 학생 등록`, `<label class="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl p-3">
-          <input type="checkbox" id="csOnly" checked class="mt-0.5"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단·0교시/방과후 통계에 나오지 않고 이 반에서만 관리합니다. 학과는 '기타'도 고를 수 있습니다.</span></span></label>`
+          <input type="checkbox" id="csOnly" class="mt-0.5"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단·0교시/방과후 통계에 나오지 않고 이 반에서만 관리합니다. 학과는 '기타'도 고를 수 있습니다. <b>실제 전공심화반 학생이면 체크하지 마세요.</b></span></span></label>`
         + studentFieldsHtml('cn', { dept: '기타', allowOther: true, optional: true })
         + `<p class="text-[11px] text-slate-400">초기 로그인 비밀번호는 <b>학번</b>입니다. 이 반 QR로 학번 + PIN으로 출석합니다.</p>`,
         { wide: true, okText: '등록', onOk: () => { const d = readStudentFields('cn'); return modalAct('addStudent', Object.assign(d, { classId: cid, classOnly: $('csOnly').checked }), '등록했습니다. 학생에게 학번과 PIN을 알려주세요.'); } });
+    }
+    // 엑셀에서 학번·이름 두 칸을 선택해 그대로 붙여넣으면(탭으로 구분됨) 한 줄에 한 명씩 등록.
+    // 공백으로만 구분해도 되게 느슨하게 파싱한다. 학년은 학번 첫 자리에서, 초기 PIN·비밀번호는 학번으로 자동 설정.
+    function parseBulkStudentLines(text) {
+      return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+        const m = line.match(/^(\d{4,5})[\s,\t]+(.+)$/);
+        return m ? { id: m[1], name: m[2].trim() } : null;
+      });
+    }
+    function updateBulkPreview() {
+      const lines = parseBulkStudentLines($('cbPaste').value), ok = lines.filter(Boolean).length, bad = lines.length - ok;
+      $('cbPreview').textContent = lines.length ? `총 ${lines.length}줄 중 ${ok}명 인식됨${bad ? ` · ${bad}줄은 "학번 이름" 형식이 아니라 건너뜁니다` : ''}` : '';
+    }
+    function openClassBulkStudents(cid) {
+      const c = findClass(cid);
+      openModal(`📋 ${c.name}에 학생 일괄 등록`, `<label class="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl p-3">
+          <input type="checkbox" id="cbOnly" class="mt-0.5"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단에 나오지 않고 이 반에서만 관리합니다. 아래 명단 전체에 똑같이 적용됩니다.</span></span></label>
+        <div><label class="lbl">학과 (전체 적용) *</label><select id="cbDept" class="inp">${DEPT_NAMES.concat(['기타']).map(d => `<option>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">학번과 이름 붙여넣기 <span class="font-normal text-slate-400">(한 줄에 한 명, 학번과 이름 사이는 탭이나 공백 — 엑셀에서 학번·이름 두 칸을 선택해 그대로 Ctrl+V 해도 됩니다)</span></label>
+          <textarea id="cbPaste" rows="8" class="inp font-mono" oninput="updateBulkPreview()" placeholder="3104	홍길동&#10;3105	김철수&#10;3106	이영희"></textarea></div>
+        <p id="cbPreview" class="text-[11px] text-slate-500"></p>
+        <p class="text-[11px] text-slate-400">초기 로그인 비밀번호와 QR 출석 PIN 모두 <b>학번</b>으로 설정됩니다. 연락처·이메일·목표기업·자격증은 비워두고, 학생에게 로그인 후 [내 정보]에서 채우고 PIN도 바꾸라고 안내하세요.</p>`,
+        { wide: true, okText: '일괄 등록', onOk: () => bulkRegisterStudents(cid) });
+    }
+    async function bulkRegisterStudents(cid) {
+      const dept = $('cbDept').value, classOnly = $('cbOnly').checked;
+      const parsed = parseBulkStudentLines($('cbPaste').value), valid = parsed.filter(Boolean);
+      if (!valid.length) return modalErr('인식된 학생이 없습니다. 한 줄에 "학번 이름" 형태로 입력하세요. (예: 3104 홍길동)');
+      if (!confirm(`${valid.length}명을 등록할까요?\n초기 비밀번호·PIN은 모두 학번으로 설정됩니다.`)) return false;
+      const fail = [];
+      for (const s of valid) {
+        try {
+          await api('addStudent', { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id, company: '', certs: '', classId: cid, classOnly });
+        } catch (e) { fail.push(`${s.id} ${s.name}: ${e.message}`); }
+      }
+      await refresh();
+      alert(fail.length ? `${valid.length - fail.length}명 등록 완료, ${fail.length}명 실패.\n\n❌ 실패 내역:\n${fail.join('\n')}` : `✅ ${valid.length}명을 등록했습니다.`);
+      return true;
     }
     function manageClassAtt(cid, sid) {
       const s = state.students.find(x => x.id === sid) || { id: sid, name: sid }, c = findClass(cid);
