@@ -2307,7 +2307,7 @@
       const fail = [];
       for (const s of valid) {
         try {
-          await api('addStudent', { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id, company: '', certs: '', classId: cid, classOnly });
+          await api('addStudent', { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id.slice(-4), company: '', certs: '', classId: cid, classOnly });
         } catch (e) { fail.push(`${s.id} ${s.name}: ${e.message}`); }
       }
       await refresh();
