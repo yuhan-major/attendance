@@ -363,6 +363,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <button onclick="openTeacherAddStudent()" class="editor-only bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 학생 추가</button>
+                <button onclick="openGlobalBulkStudents()" class="editor-only bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="users" class="w-3.5 h-3.5"></i> 일괄 등록</button>
                 <button onclick="exportStudentCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> 명단 CSV</button>
               </div>
             </div>
@@ -2319,17 +2320,29 @@
         <p class="text-[11px] text-slate-400">초기 로그인 비밀번호와 QR 출석 PIN 모두 <b>학번</b>으로 설정됩니다. 연락처·이메일·목표기업·자격증은 비워두고, 학생에게 로그인 후 [내 정보]에서 채우고 PIN도 바꾸라고 안내하세요.</p>`,
         { wide: true, okText: '일괄 등록', onOk: () => bulkRegisterStudents(cid) });
     }
+    // 전공심화반 본 명단(반에 속하지 않는 일반 등록) 일괄 등록 — "학생 명단" 탭의 [일괄 등록].
+    // 반 등록과 같은 붙여넣기 칸·파싱을 쓰되, classId 없이 addStudent를 호출한다.
+    function openGlobalBulkStudents() {
+      openModal('📋 전공심화반 학생 일괄 등록', `
+        <p class="text-[11px] text-slate-500">학과는 학번 둘째 자리(반)로 자동으로 정해집니다: 1·2반 스마트제어과, 3·4반 자동화시스템과, 5·6반 로봇전기과, 7·8반 건축디자인과.</p>
+        <div><label class="lbl">학번과 이름 붙여넣기 <span class="font-normal text-slate-400">(한 줄에 한 명, 학번과 이름 사이는 탭이나 공백 — 엑셀에서 학번·이름 두 칸을 선택해 그대로 Ctrl+V 해도 됩니다. 진로 사이트 해외연수 명단의 [학번·이름 복사]를 그대로 붙여넣어도 됩니다)</span></label>
+          <textarea id="cbPaste" rows="10" class="inp font-mono" oninput="updateBulkPreview()" placeholder="3104	홍길동&#10;3105	김철수&#10;3106	이영희"></textarea></div>
+        <p id="cbPreview" class="text-[11px] text-slate-500"></p>
+        <p class="text-[11px] text-slate-400">초기 로그인 비밀번호와 QR 출석 PIN 모두 <b>학번</b>으로 설정됩니다. 연락처·이메일·목표기업·자격증은 비워두고, 학생에게 로그인 후 [내 정보]에서 채우고 PIN도 바꾸라고 안내하세요.</p>`,
+        { wide: true, okText: '일괄 등록', onOk: () => bulkRegisterStudents(null) });
+    }
     async function bulkRegisterStudents(cid) {
-      const classOnly = $('cbOnly').checked, manualDept = $('cbDept').value;
+      const classOnly = cid && $('cbOnly') ? $('cbOnly').checked : false;
+      const manualDept = $('cbDept') ? $('cbDept').value : '';
       const parsed = parseBulkStudentLines($('cbPaste').value), valid = parsed.filter(Boolean);
       if (!valid.length) return modalErr('인식된 학생이 없습니다. 한 줄에 "학번 이름" 형태로 입력하세요. (예: 3104 홍길동)');
       if (!confirm(`${valid.length}명을 등록할까요?\n초기 비밀번호·PIN은 모두 학번으로 설정됩니다.`)) return false;
       const fail = [];
       for (const s of valid) {
         const dept = classOnly ? manualDept : deptFromStudentId(s.id);
-        try {
-          await api('addStudent', { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id.slice(-4), company: '', certs: '', classId: cid, classOnly });
-        } catch (e) { fail.push(`${s.id} ${s.name}: ${e.message}`); }
+        const data = { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id.slice(-4), company: '', certs: '' };
+        if (cid) Object.assign(data, { classId: cid, classOnly });
+        try { await api('addStudent', data); } catch (e) { fail.push(`${s.id} ${s.name}: ${e.message}`); }
       }
       await refresh();
       alert(fail.length ? `${valid.length - fail.length}명 등록 완료, ${fail.length}명 실패.\n\n❌ 실패 내역:\n${fail.join('\n')}` : `✅ ${valid.length}명을 등록했습니다.`);
