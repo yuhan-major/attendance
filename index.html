@@ -339,7 +339,7 @@
               </div>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs border-collapse">
+              <table class="w-full text-left text-sm border-collapse">
                 <thead><tr class="bg-slate-100 text-slate-700 border-b border-slate-200"><th class="p-3 font-bold">학번 / 이름</th><th class="p-3 font-bold">학과</th><th class="p-3 font-bold">운영일</th><th class="p-3 font-bold">정상</th><th class="p-3 font-bold">지각</th><th class="p-3 font-bold">사유불참</th><th class="p-3 font-bold">무단불참</th><th class="p-3 font-bold">출석률</th><th class="p-3 font-bold">가산점</th><th class="p-3 font-bold">관리</th></tr></thead>
                 <tbody id="teacherAttTableBody" class="divide-y divide-slate-100"></tbody>
               </table>
@@ -1418,7 +1418,7 @@
       if (!list.length) { body.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400">표시할 학생이 없습니다.</td></tr>`; return; }
       body.innerHTML = list.map(s => { const st = calcStats(s.id, period, session);
         const rc = st.rate === null ? 'text-slate-400' : st.rate >= 90 ? 'text-emerald-600' : st.rate >= 80 ? 'text-amber-600' : 'text-rose-600';
-        return `<tr class="hover:bg-slate-50"><td class="p-3"><div class="font-bold text-slate-900">${esc(s.name)}</div><div class="text-[10px] text-slate-400 font-mono">${esc(s.id)}</div></td>
+        return `<tr class="hover:bg-slate-50"><td class="p-3"><div class="font-bold text-slate-900">${esc(s.name)}</div><div class="text-xs text-slate-400 font-mono">${esc(s.id)}</div></td>
           <td class="p-3">${esc(s.dept)}</td><td class="p-3 font-mono">${st.total}</td><td class="p-3 font-mono text-emerald-700">${st.normal}</td><td class="p-3 font-mono text-amber-700">${st.tardy}</td>
           <td class="p-3 font-mono text-blue-700">${st.excused}</td><td class="p-3 font-mono text-rose-700">${st.unexcused}</td><td class="p-3 font-bold ${rc}">${fmtRate(st.rate)}</td>
           <td class="p-3"><span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">+${st.bonus}점</span></td>
