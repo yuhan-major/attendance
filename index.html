@@ -2293,24 +2293,40 @@
       const lines = parseBulkStudentLines($('cbPaste').value), ok = lines.filter(Boolean).length, bad = lines.length - ok;
       $('cbPreview').textContent = lines.length ? `총 ${lines.length}줄 중 ${ok}명 인식됨${bad ? ` · ${bad}줄은 "학번 이름" 형식이 아니라 건너뜁니다` : ''}` : '';
     }
+    // 학번 둘째 자리(반)로 학과를 자동으로 정한다: 1·2반 스마트제어과, 3·4반 자동화시스템과, 5·6반 로봇전기과, 7·8반 건축디자인과.
+    function deptFromStudentId(id) {
+      const cls = Number(String(id).charAt(1));
+      if (cls === 1 || cls === 2) return '스마트제어과';
+      if (cls === 3 || cls === 4) return '자동화시스템과';
+      if (cls === 5 || cls === 6) return '로봇전기과';
+      if (cls === 7 || cls === 8) return '건축디자인과';
+      return '기타';
+    }
+    function cbToggleDept() {
+      const only = $('cbOnly').checked;
+      $('cbDeptWrap').classList.toggle('hidden', !only);
+      $('cbDeptAuto').classList.toggle('hidden', only);
+    }
     function openClassBulkStudents(cid) {
       const c = findClass(cid);
       openModal(`📋 ${c.name}에 학생 일괄 등록`, `<label class="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl p-3">
-          <input type="checkbox" id="cbOnly" class="mt-0.5"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단에 나오지 않고 이 반에서만 관리합니다. 아래 명단 전체에 똑같이 적용됩니다.</span></span></label>
-        <div><label class="lbl">학과 (전체 적용) *</label><select id="cbDept" class="inp">${DEPT_NAMES.concat(['기타']).map(d => `<option>${d}</option>`).join('')}</select></div>
-        <div><label class="lbl">학번과 이름 붙여넣기 <span class="font-normal text-slate-400">(한 줄에 한 명, 학번과 이름 사이는 탭이나 공백 — 엑셀에서 학번·이름 두 칸을 선택해 그대로 Ctrl+V 해도 됩니다)</span></label>
+          <input type="checkbox" id="cbOnly" class="mt-0.5" onchange="cbToggleDept()"><span><b>전공심화반 학생이 아님 (이 반 전용)</b><br><span class="text-slate-500">체크하면 전공심화반 명단에 나오지 않고 이 반에서만 관리합니다. 아래 명단 전체에 똑같이 적용됩니다.</span></span></label>
+        <div id="cbDeptWrap" class="hidden"><label class="lbl">학과 (전체 적용) *</label><select id="cbDept" class="inp">${DEPT_NAMES.concat(['기타']).map(d => `<option>${d}</option>`).join('')}</select></div>
+        <p id="cbDeptAuto" class="text-[11px] text-slate-500">학과는 학번 둘째 자리(반)로 자동으로 정해집니다: 1·2반 스마트제어과, 3·4반 자동화시스템과, 5·6반 로봇전기과, 7·8반 건축디자인과.</p>
+        <div><label class="lbl">학번과 이름 붙여넣기 <span class="font-normal text-slate-400">(한 줄에 한 명, 학번과 이름 사이는 탭이나 공백 — 엑셀에서 학번·이름 두 칸을 선택해 그대로 Ctrl+V 해도 됩니다. 진로 사이트 해외연수 명단의 [학번·이름 복사]를 그대로 붙여넣어도 됩니다)</span></label>
           <textarea id="cbPaste" rows="8" class="inp font-mono" oninput="updateBulkPreview()" placeholder="3104	홍길동&#10;3105	김철수&#10;3106	이영희"></textarea></div>
         <p id="cbPreview" class="text-[11px] text-slate-500"></p>
         <p class="text-[11px] text-slate-400">초기 로그인 비밀번호와 QR 출석 PIN 모두 <b>학번</b>으로 설정됩니다. 연락처·이메일·목표기업·자격증은 비워두고, 학생에게 로그인 후 [내 정보]에서 채우고 PIN도 바꾸라고 안내하세요.</p>`,
         { wide: true, okText: '일괄 등록', onOk: () => bulkRegisterStudents(cid) });
     }
     async function bulkRegisterStudents(cid) {
-      const dept = $('cbDept').value, classOnly = $('cbOnly').checked;
+      const classOnly = $('cbOnly').checked, manualDept = $('cbDept').value;
       const parsed = parseBulkStudentLines($('cbPaste').value), valid = parsed.filter(Boolean);
       if (!valid.length) return modalErr('인식된 학생이 없습니다. 한 줄에 "학번 이름" 형태로 입력하세요. (예: 3104 홍길동)');
       if (!confirm(`${valid.length}명을 등록할까요?\n초기 비밀번호·PIN은 모두 학번으로 설정됩니다.`)) return false;
       const fail = [];
       for (const s of valid) {
+        const dept = classOnly ? manualDept : deptFromStudentId(s.id);
         try {
           await api('addStudent', { id: s.id, name: s.name, dept, grade: s.id.charAt(0), phone: '', email: '', pin: s.id.slice(-4), company: '', certs: '', classId: cid, classOnly });
         } catch (e) { fail.push(`${s.id} ${s.name}: ${e.message}`); }
