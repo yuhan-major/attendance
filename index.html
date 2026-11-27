@@ -284,7 +284,7 @@
               </div>
               <div class="space-y-2">
                 <p class="text-xs font-bold text-emerald-700">🌇 방과후 (2회 스캔 · 입실/퇴실)</p>
-                <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th><th class="text-left font-semibold">교시</th></tr></thead><tbody id="afterCfgBody"></tbody></table>
+                <table class="w-full text-xs"><thead><tr class="text-slate-500"><th class="text-left font-semibold">요일</th><th class="text-left font-semibold">시작</th><th class="text-left font-semibold">종료</th><th class="text-left font-semibold">교시</th><th></th></tr></thead><tbody id="afterCfgBody"></tbody></table>
                 <div class="grid grid-cols-2 gap-2 text-xs">
                   <div><label class="lbl">입실 가능 (시작 n분 전)</label><input type="number" min="0" id="cfgEarly" class="inp font-mono"></div>
                   <div><label class="lbl">지각 인정 (시작 후 n분)</label><input type="number" min="0" id="cfgLate" class="inp font-mono"></div>
@@ -1364,8 +1364,13 @@
       $('cfgZeroIn').value = z.inStart; $('cfgZeroEnd').value = z.inEnd; $('cfgZeroLate').value = z.lateUntil;
       $('afterCfgBody').innerHTML = [1, 2, 3, 4, 5].map(d => { const c = a.days[d] || { start: '', end: '', periods: '' };
         return `<tr><td class="py-1 font-bold text-slate-700">${WEEK[d]}</td><td class="py-1 pr-1"><input type="time" id="aS${d}" value="${c.start}" class="inp font-mono !p-1.5"></td>
-          <td class="py-1 pr-1"><input type="time" id="aE${d}" value="${c.end}" class="inp font-mono !p-1.5"></td><td class="py-1"><input id="aP${d}" value="${esc(c.periods)}" class="inp !p-1.5"></td></tr>`; }).join('');
+          <td class="py-1 pr-1"><input type="time" id="aE${d}" value="${c.end}" class="inp font-mono !p-1.5"></td><td class="py-1 pr-1"><input id="aP${d}" value="${esc(c.periods)}" class="inp !p-1.5"></td>
+          <td class="py-1"><button type="button" onclick="aCopyDay(${d})" title="이 시작·종료·교시를 다른 요일에 복사" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold whitespace-nowrap">복사</button></td></tr>`; }).join('');
       $('cfgEarly').value = a.earlyMin; $('cfgLate').value = a.lateMin; $('cfgOutBefore').value = a.outBeforeMin; $('cfgOutAfter').value = a.outAfterMin;
+    }
+    function aCopyDay(d) {
+      const s = $('aS' + d).value, e = $('aE' + d).value, p = $('aP' + d).value;
+      [1, 2, 3, 4, 5].forEach(d2 => { if (d2 !== d) { $('aS' + d2).value = s; $('aE' + d2).value = e; $('aP' + d2).value = p; } });
     }
     function saveTimeSettings() {
       const days = {}; [1, 2, 3, 4, 5].forEach(d => days[d] = { start: $('aS' + d).value, end: $('aE' + d).value, periods: $('aP' + d).value });
